@@ -29,7 +29,7 @@
       "id": 2,
       "modelId": 1,
       "isActive": true,
-      "name": "story_prompt_v1",
+      "name": "story_prompt",
       "category": "story",
       "description": "剧情推进主提示词",
       "outputStructure": "storyPushSchema",

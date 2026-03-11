@@ -37,7 +37,7 @@ Use this skill when the task is about operating or narrating the local MOB.AI ga
 
 - `docs://game-rules`
 - `docs://project-architecture`
-- `prompt://story_prompt_v1`
+- `prompt://story_prompt`
 - `prompt://character_prompt`
 
 ## Output style

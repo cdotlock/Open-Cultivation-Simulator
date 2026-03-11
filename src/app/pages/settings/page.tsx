@@ -89,35 +89,38 @@ export default function SettingsPage() {
       className="min-h-[calc(100vh-48px)] bg-[#F2EBD9] font-family-song text-[#2a2116]"
       style={{ backgroundImage: `url(${$img("bg")})`, backgroundBlendMode: "overlay" }}
     >
-      <div className="mx-auto max-w-6xl px-4 py-8">
-        <div className="rounded-[28px] border border-[#9a7b4f] bg-[rgba(250,242,226,0.92)] shadow-[0_20px_60px_rgba(83,55,18,0.12)]">
-          <div className="border-b border-[#c9ae7f] px-6 py-5 flex items-center justify-between gap-4">
+      <div className="mx-auto max-w-[720px] px-4 py-6">
+        <div className="rounded-[26px] border border-[#9a7b4f] bg-[rgba(250,242,226,0.94)] shadow-[0_16px_48px_rgba(83,55,18,0.12)]">
+          <div className="flex items-center justify-between gap-3 border-b border-[#c9ae7f] px-5 py-4">
             <div>
-              <div className="text-[28px]">洞府设置</div>
-              <div className="text-[13px] text-[#6f5a3b] mt-1">本地模型、功能开关与默认提示词都保存在本机。</div>
+              <div className="text-[26px]">洞府设置</div>
+              <div className="mt-1 text-[12px] tracking-[0.12em] text-[#7a6542]">LOCAL CONFIG</div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => router.push("/pages/settings/prompts")}
-                className="rounded-full border border-[#8e6a38] px-4 py-2 text-sm text-[#5f4525] hover:bg-[#f6ead3]"
+                className="rounded-full border border-[#8e6a38] px-3 py-2 text-[12px] text-[#5f4525] hover:bg-[#f6ead3]"
               >
-                高级提示词
+                Prompt
               </button>
               <button
                 onClick={() => router.push("/")}
-                className="rounded-full border border-[#8e6a38] px-4 py-2 text-sm text-[#5f4525] hover:bg-[#f6ead3]"
+                className="rounded-full border border-[#8e6a38] px-3 py-2 text-[12px] text-[#5f4525] hover:bg-[#f6ead3]"
               >
-                返回主界面
+                返回
               </button>
             </div>
           </div>
 
-          <div className="px-6 py-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-            <section className="rounded-[24px] border border-[#d5bf97] bg-[rgba(255,250,241,0.88)] p-5">
-              <div className="text-[20px] mb-4">模型连接</div>
+          <div className="space-y-4 px-5 py-5">
+            <section className="rounded-[22px] border border-[#d5bf97] bg-[rgba(255,250,241,0.9)] p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="text-[19px]">模型连接</div>
+                <div className="text-[11px] tracking-[0.18em] text-[#8d734d]">MODEL</div>
+              </div>
               <div className="grid gap-4">
                 <label className="grid gap-2 text-sm">
-                  <span>Provider</span>
+                  <span className="text-[#6a5535]">Provider</span>
                   <select
                     className="rounded-2xl border border-[#ccb181] bg-[#fff9ef] px-4 py-3 outline-none"
                     value={settings.provider}
@@ -131,7 +134,7 @@ export default function SettingsPage() {
                   </select>
                 </label>
                 <label className="grid gap-2 text-sm">
-                  <span>模型名称</span>
+                  <span className="text-[#6a5535]">模型名称</span>
                   <input
                     className="rounded-2xl border border-[#ccb181] bg-[#fff9ef] px-4 py-3 outline-none"
                     value={settings.modelName}
@@ -139,7 +142,7 @@ export default function SettingsPage() {
                   />
                 </label>
                 <label className="grid gap-2 text-sm">
-                  <span>Base URL</span>
+                  <span className="text-[#6a5535]">Base URL</span>
                   <input
                     className="rounded-2xl border border-[#ccb181] bg-[#fff9ef] px-4 py-3 outline-none"
                     value={settings.apiUrl}
@@ -147,7 +150,7 @@ export default function SettingsPage() {
                   />
                 </label>
                 <label className="grid gap-2 text-sm">
-                  <span>API Key</span>
+                  <span className="text-[#6a5535]">API Key</span>
                   <input
                     className="rounded-2xl border border-[#ccb181] bg-[#fff9ef] px-4 py-3 outline-none"
                     value={settings.apiKey}
@@ -157,7 +160,10 @@ export default function SettingsPage() {
                 </label>
               </div>
 
-              <div className="mt-6 text-[20px] mb-4">功能开关</div>
+              <div className="mt-6 mb-4 flex items-center justify-between">
+                <div className="text-[19px]">功能开关</div>
+                <div className="text-[11px] tracking-[0.18em] text-[#8d734d]">FEATURE</div>
+              </div>
               <div className="grid gap-3 text-sm">
                 <label className="flex items-center justify-between rounded-2xl border border-[#d8c59f] bg-[#fffaf2] px-4 py-3">
                   <span>图像生成功能</span>
@@ -193,36 +199,30 @@ export default function SettingsPage() {
               </div>
             </section>
 
-            <section className="rounded-[24px] border border-[#d5bf97] bg-[rgba(255,250,241,0.72)] p-5">
-              <div className="text-[20px]">洞府说明</div>
-              <div className="mt-3 space-y-3 text-[13px] leading-6 text-[#6f5a3b]">
-                <p>主流程默认使用仓库内置的原始提示词包，玩家不需要也不建议直接修改。</p>
-                <p>若你需要校对或微调 Prompt，请从右上角进入“高级提示词”。该入口属于维护菜单，不会在主设置页直接暴露全部模板。</p>
-                <p>桌面与移动端共用同一套本地配置文件；这里保存后立即生效，不依赖远程配置中心。</p>
+            <section className="rounded-[22px] border border-[#d5bf97] bg-[rgba(255,250,241,0.78)] p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="text-[19px]">当前状态</div>
+                <div className="text-[11px] tracking-[0.18em] text-[#8d734d]">STATUS</div>
               </div>
-
-              <div className="mt-6 rounded-[22px] border border-[#d8c59f] bg-[#fffaf2] p-4">
-                <div className="text-[16px]">当前运行模式</div>
-                <div className="mt-3 grid gap-3 text-sm text-[#5a482f]">
-                  <div className="flex items-center justify-between">
-                    <span>MCP Server</span>
-                    <span className="text-[#87653a]">/mcp</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>生图功能</span>
-                    <span>{settings.imageGenerationEnabled ? "已启用" : "未启用"}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>角色头像生成</span>
-                    <span>{settings.avatarGenerationEnabled ? "已启用" : "未启用"}</span>
-                  </div>
+              <div className="grid gap-3 text-sm text-[#5a482f]">
+                <div className="flex items-center justify-between rounded-2xl border border-[#d8c59f] bg-[#fffaf2] px-4 py-3">
+                  <span>MCP Server</span>
+                  <span className="text-[#87653a]">/mcp</span>
+                </div>
+                <div className="flex items-center justify-between rounded-2xl border border-[#d8c59f] bg-[#fffaf2] px-4 py-3">
+                  <span>生图功能</span>
+                  <span>{settings.imageGenerationEnabled ? "已启用" : "未启用"}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-2xl border border-[#d8c59f] bg-[#fffaf2] px-4 py-3">
+                  <span>角色头像生成</span>
+                  <span>{settings.avatarGenerationEnabled ? "已启用" : "未启用"}</span>
                 </div>
               </div>
             </section>
           </div>
 
-          <div className="border-t border-[#c9ae7f] px-6 py-4 text-sm text-[#6d5838] min-h-[56px]">
-            {isPending ? "正在落盘本地设置..." : notice || "单机版默认使用本地配置文件；不依赖远程配置中心。"}
+          <div className="min-h-[52px] border-t border-[#c9ae7f] px-5 py-4 text-sm text-[#6d5838]">
+            {isPending ? "正在落盘本地设置..." : notice || "设置保存在本机，立即生效。"}
           </div>
         </div>
       </div>

@@ -45,7 +45,9 @@ function normalizeConfig(config: LocalAppConfig): LocalAppConfig {
     : defaults.models[0];
 
   const incomingPrompts = config.prompts.map((prompt) =>
-    prompt.name === "story_prompt_v2" ? { ...prompt, name: "story_prompt_v1" } : prompt,
+    prompt.name === "story_prompt_v2" || prompt.name === "story_prompt_v1"
+      ? { ...prompt, name: "story_prompt" }
+      : prompt,
   );
 
   const shouldResetBuiltIns = config.version !== defaults.version;

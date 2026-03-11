@@ -48,7 +48,7 @@ export class GamePushService {
             }
         });
 
-        const config = await ConfigService.getConfig('story_prompt_v1');
+        const config = await ConfigService.getConfig('story_prompt');
         if (!config) {
             throw new Error("未找到故事生成配置");
         }
@@ -94,7 +94,7 @@ export class GamePushService {
             model: modelInstance(config.model.name),
             providerOptions,
             schema: storyPushSchema,
-            promptTemplate: "story_prompt_v1",
+            promptTemplate: "story_prompt",
         });
 
         if (gamePush?.节点要素?.基础信息?.等级) {

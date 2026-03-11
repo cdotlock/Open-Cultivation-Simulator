@@ -415,7 +415,7 @@
 虽然玩家看到的是“游戏规则”，但大量叙事控制其实在 Prompt 配置层：
 
 - `character_prompt`：角色档案生成
-- `story_prompt_v1`：剧情节点生成
+- `story_prompt`：剧情节点生成
 - `custom_option_difficulty`：自定义输入分类
 - `death_judgement_prompt`：死亡判词
 - `breakthrough_success` / `breakthrough_fail`：突破文本与描述更新

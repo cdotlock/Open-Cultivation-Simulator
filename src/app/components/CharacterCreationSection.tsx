@@ -36,9 +36,9 @@ export const CharacterCreationSection = ({
 }: CharacterCreationSectionProps) => {
 
   return (
-    <div className="flex w-full flex-col items-center gap-4 rounded-[28px] border border-[#d6c398] bg-[rgba(250,244,230,0.9)] p-4 shadow-[0_12px_30px_rgba(87,58,25,0.08)] xl:p-6">
+    <div className="flex flex-col items-center gap-4 p-4 bg-[#f2ebd9] w-full max-w-md mx-auto">
       {/* Spiritual Root Selection */}
-      <div className="flex w-full flex-col items-center gap-3">
+      <div className="flex flex-col items-center gap-3">
         <SpiritualRootSection selectedSpiritRoot={selectedSpiritRoot} />
         <SpiritualElements 
           selectedSpiritRoot={selectedSpiritRoot}
@@ -56,16 +56,16 @@ export const CharacterCreationSection = ({
         />
         
         {/* 生成按钮 - 紧贴在属性点下方 */}
-        <div className="mt-2 flex w-full flex-row justify-center">
+        <div className="mt-2 w-full flex flex-row justify-center">
           <img
             style={{ filter: "drop-shadow(0px 4px 10px rgba(0, 0, 0, 0.25))" }}
-            className={`w-full max-w-[320px] cursor-pointer ${canCreate ? "" : "hidden"}`}
+            className={`w-[73.2%] ${canCreate ? "" : "hidden"}`}
             onClick={canCreate ? onCreate : undefined}
             src={$img("btn-create-profile")}
             alt="btn-create" />
           <img
             style={{ filter: "drop-shadow(0px 4px 10px rgba(0, 0, 0, 0.25))" }}
-            className={`w-full max-w-[320px] ${canCreate ? "hidden" : ""}`}
+            className={`w-[73.2%] ${canCreate ? "hidden" : ""}`}
             src={$img("btn-create-profile-dis")}
             alt="btn-create-dis" />
         </div>

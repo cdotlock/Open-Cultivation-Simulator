@@ -51,13 +51,4 @@
 
 body {
   font-family: "Huiwen-mincho", "Source Han Serif CN for Display", sans-serif;
-  background: #f2ebd9;
-}
-
-.story-prose {
-  letter-spacing: 0.04em;
-}
-
-.story-prose p + p {
-  margin-top: 1.4em;
 }

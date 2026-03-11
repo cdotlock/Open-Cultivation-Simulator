@@ -1,11 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { useRecoilState } from 'recoil';
 
 import { characterState, shareCharacterState } from '@/app/store';
-import { CharacterWithGamePush } from '@/interfaces';
 import { idToShortUrl, shortUrlToId } from "@/utils/shortUrl"
 
-import { useUuid } from './useLogin';
 import useStartGame from "./useStartGame";
 import useRoute from './useRoute';
 import { useToast } from './useToast';
@@ -28,13 +26,6 @@ export function useCharacterCrud() {
     setShareCharacterInfo({
       id: characterId,
       type: "share"
-    });
-  }, [setShareCharacterInfo]);
-
-  const showImportCharacter = useCallback(() => {
-    setShareCharacterInfo({
-      id: 0,
-      type: "import"
     });
   }, [setShareCharacterInfo]);
 
@@ -76,7 +67,6 @@ export function useCharacterCrud() {
   return {
     handleCharacterSelect,
     shareCharacter,
-    showImportCharacter,
     handleImportCharacter,
     closeShare,
     shareCharacterInfo,

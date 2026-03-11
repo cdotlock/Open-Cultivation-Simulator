@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { $img } from '@/utils';
+import { trackEvent, trackPageView, track, UmamiEvents } from '@/lib/analytics/umami';
 import { useToast } from '../hooks/useToast';
 import { ramdomFirstName, ramdomIdentity, ramdomLastName } from '@/utils/ramdom'
 import { useLogin } from '../hooks/useLogin';
@@ -8,6 +8,7 @@ import { CharacterCreationSection } from './CharacterCreationSection';
 
 const MAX_ATTRIBUTE_POINTS = 5
 
+// 灵根配置
 const spiritRoots = [
   { name: "金灵根", bonus: { 神识: 1, 身手: 1, 魅力: 0 } },
   { name: "木灵根", bonus: { 魅力: 1, 神识: 1, 身手: 0 } },
@@ -22,85 +23,109 @@ export default function PageCreateChar() {
   const { user, checkLogin } = useLogin()
   const uuid = user?.uuid || ""
   const { toCreateLoadingPage } = useGameControll(uuid)
+
+  // 灵根选择
   const [selectedSpiritRoot, setSelectedSpiritRoot] = useState<number | null>(null)
+
+  // 加点状态（基础1点，额外5点可分配）
   const [attributePoints, setAttributePoints] = useState({
-    魅力: 1,
-    神识: 1,
-    身手: 1
+    魅力: 1, // 基础1点
+    神识: 1, // 基础1点
+    身手: 1  // 基础1点
   })
 
   useEffect(() => {
     checkLogin()
   }, [checkLogin])
 
+  useEffect(() => {
+    trackPageView('/create')
+  }, [])
+
   const updateFormValue = useCallback((index: number, value: string) => {
     setCreateForm(pre => pre.map((item, i) => i === index ? value : item))
-  }, [])
+  }, [setCreateForm])
+
+
 
   const handleUserInput = useCallback((event: React.ChangeEvent<HTMLInputElement>, index: number) => {
     setCreateForm(pre => pre.map((item, i) => i === index ? event.target.value : item))
-  }, [])
+  }, [setCreateForm])
 
+  // 计算调整后的属性点（确保不超过上限）
   const calculateAdjustedAttributes = useCallback((currentPoints: typeof attributePoints, bonus: { 魅力: number, 神识: number, 身手: number }) => {
     const adjustedPoints = { ...currentPoints }
     let hasAdjustment = false
-
+    
+    // 检查每个属性，如果加上灵根奖励后超过6点，则调整基础点数
     Object.keys(adjustedPoints).forEach(key => {
       const attr = key as keyof typeof adjustedPoints
       const totalWithBonus = adjustedPoints[attr] + (bonus[attr] || 0)
-
+      
       if (totalWithBonus > 6) {
         adjustedPoints[attr] = Math.max(1, 6 - (bonus[attr] || 0))
         hasAdjustment = true
       }
     })
-
+    
     return { adjustedPoints, hasAdjustment }
   }, [])
 
+  // 选择灵根
   const handleSpiritRootSelect = useCallback((index: number) => {
     const newBonus = spiritRoots[index].bonus
     const { adjustedPoints, hasAdjustment } = calculateAdjustedAttributes(attributePoints, newBonus)
 
+    // 一次性更新所有相关状态
     setSelectedSpiritRoot(index)
     if (hasAdjustment) {
       setAttributePoints(adjustedPoints)
       showToast("灵根切换后属性已自动调整至上限内")
     }
+    try {
+      track('web.create_character.choose_attribute.click');
+      trackEvent(UmamiEvents.快速生成角色, { source: 'create_page_spirit_root', spirit_root: spiritRoots[index].name })
+    } catch {}
   }, [attributePoints, calculateAdjustedAttributes, showToast])
+
 
   const bonus = useMemo(() => {
     if (selectedSpiritRoot === null) return { 魅力: 0, 神识: 0, 身手: 0 }
     return spiritRoots[selectedSpiritRoot].bonus as { 魅力: number, 神识: number, 身手: number }
   }, [selectedSpiritRoot])
-
+  
   const totalAttributes = useMemo(() => ({
     魅力: attributePoints.魅力 + bonus.魅力,
     神识: attributePoints.神识 + bonus.神识,
     身手: attributePoints.身手 + bonus.身手
   }), [attributePoints, bonus])
 
+  // 计算已分配的额外点数
   const getExtraPointsUsed = useCallback(() => {
     return (attributePoints.魅力 - 1) + (attributePoints.神识 - 1) + (attributePoints.身手 - 1)
   }, [attributePoints])
 
+  // 加点相关函数
   const handleAttributeChange = useCallback((attribute: keyof typeof attributePoints, value: number) => {
     const currentValue = attributePoints[attribute]
     const totalWithBonus = value + (bonus[attribute] || 0)
-
+    
+    // 检查上限（6点）
     if (totalWithBonus > 6) {
       showToast(`${attribute}属性最高为6点`)
       return
     }
-
+    
+    // 检查下限（1点基础）
     if (value < 1) {
       showToast(`${attribute}属性最低为1点`)
       return
     }
 
+    // 检查额外点数限制
     const otherPoints = (attributePoints.魅力 - 1) + (attributePoints.神识 - 1) + (attributePoints.身手 - 1)
     const newExtraPoints = otherPoints - (currentValue - 1) + (value - 1)
-
+    
     if (newExtraPoints > MAX_ATTRIBUTE_POINTS) {
       showToast(`额外点数不能超过${MAX_ATTRIBUTE_POINTS}点`)
       return
@@ -110,148 +135,94 @@ export default function PageCreateChar() {
       ...prev,
       [attribute]: value
     }))
-  }, [attributePoints, bonus, showToast])
+  }, [attributePoints, showToast, bonus])
 
+  // 随机按钮的回调函数
   const handleRandomFirstName = useCallback(() => {
+    try {
+      track('web.create_character.random.click', { random_type: 'surname' });
+    } catch {}
     updateFormValue(0, ramdomFirstName());
   }, [updateFormValue])
 
   const handleRandomLastName = useCallback(() => {
+    try {
+      track('web.create_character.random.click', { random_type: 'name' });
+    } catch {}
     updateFormValue(1, ramdomLastName());
   }, [updateFormValue])
 
   const handleRandomIdentity = useCallback(() => {
+    try {
+      track('web.create_character.random.click', { random_type: 'identity' });
+    } catch {}
     updateFormValue(2, ramdomIdentity());
   }, [updateFormValue])
 
-  const canCreate = createForm[0].length > 0 &&
-                   createForm[1].length > 0 &&
-                   createForm[2].length > 0 &&
+  // 验证条件
+  const canCreate = createForm[0].length > 0 && 
+                   createForm[1].length > 0 && 
+                   createForm[2].length > 0 && 
                    selectedSpiritRoot !== null &&
                    getExtraPointsUsed() === MAX_ATTRIBUTE_POINTS
 
   const handleCreate = useCallback(() => {
-    if (!canCreate) {
-      return
+    if (canCreate) {
+      const selectedSpiritRootName = selectedSpiritRoot !== null ? spiritRoots[selectedSpiritRoot].name : ''
+      toCreateLoadingPage(createForm, "", totalAttributes, selectedSpiritRootName)
+      try {
+        track('web.create_character.create_profile.click');
+        trackEvent(UmamiEvents.提交角色创建, {
+          spirit_root: selectedSpiritRootName,
+          charm: totalAttributes.魅力,
+          sense: totalAttributes.神识,
+          agility: totalAttributes.身手,
+        })
+      } catch {}
     }
-
-    const selectedSpiritRootName = selectedSpiritRoot !== null ? spiritRoots[selectedSpiritRoot].name : ''
-    toCreateLoadingPage(createForm, "", totalAttributes, selectedSpiritRootName)
-  }, [canCreate, createForm, selectedSpiritRoot, toCreateLoadingPage, totalAttributes])
+  }, [canCreate, toCreateLoadingPage, createForm, selectedSpiritRoot, totalAttributes])
 
   const extraPointsUsed = getExtraPointsUsed()
 
   return (
-    <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-6 px-4 pb-14 pt-6 text-[#111] xl:px-6 xl:pt-8">
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <section className="rounded-[32px] border border-[#d7c49c] bg-[rgba(248,241,225,0.92)] p-6 shadow-[0_18px_44px_rgba(85,58,23,0.08)]">
-          <div className="text-[20px] text-[#6b5738] xl:text-[22px]">{`{ 创建角色 }`}</div>
-          <div className="mt-2 text-[36px] leading-none xl:text-[52px]">{`"在下名为"`}</div>
-          <div className="mt-2 text-[13px] leading-6 text-[#6c5735] xl:text-[14px]">我将以这个名字开启修行之路。角色名确认后不可更改，请在此刻定下命数。</div>
+    <div className="text-[#111] text-[14px] flex flex-col items-center">
+      {/* 基本信息部分 */}
+      <div className="text-[24px] mt-[24px]">{`{ 创建角色 }`}</div>
+      <div className="text-[48px] ">{`"在下名为"`}</div>
+      <div>我将以这个名字开启修行之路 （确认后无法更改）</div>
+      
+      <div className="border-b-[1px] h-[56px] w-[calc(100vw-72px)] mt-[62px] box-border flex flex-row items-end justify-between leading-[1] pb-[7px]">
+        <div className="text-[#11111188]">姓氏</div>
+        <input className="text-[48px] w-[2em] focus-visible:outline-none text-center" maxLength={2} value={createForm[0]} onChange={(e) => handleUserInput(e, 0)} onFocus={() => track('web.create_character.input.click', { input_type: 'surname' })} />
+        <div onClick={handleRandomFirstName}>随机</div>
+      </div>
 
-          <div className="mt-8 space-y-6">
-            <FieldRow
-              label="姓氏"
-              value={createForm[0]}
-              maxLength={2}
-              onChange={(event) => handleUserInput(event, 0)}
-              onRandom={handleRandomFirstName}
-              inputClassName="text-[44px] xl:text-[52px]"
-            />
-            <FieldRow
-              label="名"
-              value={createForm[1]}
-              maxLength={2}
-              onChange={(event) => handleUserInput(event, 1)}
-              onRandom={handleRandomLastName}
-              inputClassName="text-[44px] xl:text-[52px]"
-            />
-            <FieldRow
-              label="身份"
-              value={createForm[2]}
-              maxLength={9}
-              onChange={(event) => handleUserInput(event, 2)}
-              onRandom={handleRandomIdentity}
-              inputClassName="text-[22px] xl:text-[24px]"
-              wide
-            />
-          </div>
+      <div className="border-b-[1px] h-[56px] w-[calc(100vw-72px)] mt-[36px] box-border flex flex-row items-end justify-between leading-[1] pb-[7px]">
+        <div className="text-[#11111188]">名&nbsp;</div>
+        <input className="text-[48px] w-[2em] focus-visible:outline-none text-center" maxLength={2} value={createForm[1]} onChange={(e) => handleUserInput(e, 1)} onFocus={() => track('web.create_character.input.click', { input_type: 'name' })} />
+        <div onClick={handleRandomLastName}>随机</div>
+      </div>
 
-          <div className="mt-8 rounded-[28px] border border-[#d9c8a6] bg-[rgba(255,249,239,0.86)] p-5">
-            <div className="flex items-center justify-between text-[13px] text-[#6b5738]">
-              <span>命格预览</span>
-              <span>{selectedSpiritRoot !== null ? spiritRoots[selectedSpiritRoot].name : "待定灵根"}</span>
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <PreviewStat label="魅力" value={totalAttributes.魅力} />
-              <PreviewStat label="神识" value={totalAttributes.神识} />
-              <PreviewStat label="身手" value={totalAttributes.身手} />
-            </div>
-            <div className="mt-4 flex items-center gap-3 rounded-[20px] bg-[#efe5d1] px-4 py-3 text-[13px] text-[#6a5430]">
-              <img className="h-10 w-10 shrink-0" src={$img('circle')} alt="命数轮盘" />
-              <div className="leading-6">
-                已分配额外属性 {extraPointsUsed}/{MAX_ATTRIBUTE_POINTS}。灵根加成会实时计入总属性，并自动处理超上限的情况。
-              </div>
-            </div>
-          </div>
-        </section>
+      <div className="border-b-[1px] h-[56px] w-[calc(100vw-72px)] mt-[36px] box-border flex flex-row items-end justify-between leading-[1] pb-[7px]">
+        <div className="text-[#11111188]">身份</div>
+        <input className="text-[20px] text-center w-[9em] focus-visible:outline-none" maxLength={9} value={createForm[2]} onChange={(e) => handleUserInput(e, 2)} onFocus={() => track('web.create_character.input.click', { input_type: 'identity' })} />
+        <div onClick={handleRandomIdentity}>随机</div>
+      </div>
 
-        <section className="flex flex-col gap-4">
-          <CharacterCreationSection
-            extraAttributePoints={bonus}
-            selectedSpiritRoot={selectedSpiritRoot}
-            onSpiritRootSelect={handleSpiritRootSelect}
-            attributePoints={attributePoints}
-            onAttributeChange={handleAttributeChange}
-            remainingPoints={MAX_ATTRIBUTE_POINTS - extraPointsUsed}
-            totalPoints={MAX_ATTRIBUTE_POINTS}
-            canCreate={canCreate}
-            onCreate={handleCreate}
-          />
-        </section>
+      {/* 新的灵根选择和属性加点部分 */}
+      <div className="mt-[40px] w-full flex flex-col items-center">
+        <CharacterCreationSection 
+          extraAttributePoints={bonus}
+          selectedSpiritRoot={selectedSpiritRoot}
+          onSpiritRootSelect={handleSpiritRootSelect}
+          attributePoints={attributePoints}
+          onAttributeChange={handleAttributeChange}
+          remainingPoints={MAX_ATTRIBUTE_POINTS - extraPointsUsed}
+          totalPoints={MAX_ATTRIBUTE_POINTS}
+          canCreate={canCreate}
+          onCreate={handleCreate}
+        />
       </div>
     </div>
   )
 }
-
-const FieldRow = ({
-  label,
-  value,
-  maxLength,
-  onChange,
-  onRandom,
-  inputClassName,
-  wide = false,
-}: {
-  label: string;
-  value: string;
-  maxLength: number;
-  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onRandom: () => void;
-  inputClassName: string;
-  wide?: boolean;
-}) => {
-  return (
-    <div className="border-b border-[#b79d70] pb-3">
-      <div className="flex items-end justify-between gap-4">
-        <div className="shrink-0 text-[#11111188]">{label}</div>
-        <input
-          className={`min-w-0 flex-1 bg-transparent text-center focus-visible:outline-none ${wide ? "max-w-[12em]" : "max-w-[2.6em]"} ${inputClassName}`}
-          maxLength={maxLength}
-          value={value}
-          onChange={onChange}
-        />
-        <button onClick={onRandom} className="shrink-0 text-[14px] text-[#6b5738]">
-          随机
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const PreviewStat = ({ label, value }: { label: string; value: number }) => (
-  <div className="rounded-[20px] border border-[#d3bf95] bg-[#fffaf1] px-4 py-3 text-center">
-    <div className="text-[12px] text-[#6c5836]">{label}</div>
-    <div className="mt-2 text-[28px] leading-none text-[#2e2217]">{value}</div>
-  </div>
-);

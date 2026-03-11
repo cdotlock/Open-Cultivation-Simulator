@@ -7,11 +7,12 @@ import { GameOptionType, BreakthroughResponse } from "@/interfaces";
 import { pushGame } from "../actions/game/action";
 import { analyzeCustomOption } from "../actions/module/analyzeOption";
 import { useRouter } from 'next/navigation';
-import { difficultyLevelMap } from "@/interfaces/const";
+import { difficultyLevelMap, attrIconMap, statusIconMap } from "@/interfaces/const";
 import { useBgm } from '../hooks/useBgm';
 import { CharStatusBar } from "./CharStatusBar";
 import useRoute from "../hooks/useRoute";
 import DiceAnimate2 from "./DiceAnimate2";
+import { trackEvent, trackPageView, UmamiEvents } from "@/lib/analytics/umami";
 
 interface gameState {
   status: "streaming" | "loading" | "playing" | "breakthrough";
@@ -24,6 +25,8 @@ interface imageGenerationState {
   imageUrl?: string;
   error?: string;
 }
+
+const storyProseClass = "mx-6 mt-4 whitespace-pre-wrap text-[20px] leading-[1.9] text-[#524a37]";
 
 // 将剧情文本转换为段落化 HTML，便于后续展示
 const buildStoryHtml = (story: string) => {
@@ -43,9 +46,6 @@ const buildStoryHtml = (story: string) => {
     .map((paragraph) => `<p>${paragraph.replace(/\n/g, '<br />')}</p>`)
     .join("");
 };
-
-const storyProseClass =
-  "story-prose mx-auto w-full max-w-[780px] px-6 text-[18px] leading-[2] text-[#524a37] xl:px-8";
 
 // 自定义输入按钮组件
 const CustomInputButton = ({ onClick }: { onClick: (customInput: string) => void }) => {
@@ -120,6 +120,7 @@ const GameOptions = ({ onNext, onCustomInput }: {
     throw new Error("No game push");
   }
   const playerOptions = gamePush.gamePush.节点要素.剧情要素.玩家选项
+  console.log(playerOptions, gamePush)
 
   return <div className="my-20 flex flex-col gap-6 text-white text-sm text-center">
     {playerOptions.length > 0 && playerOptions.map((item, index) => (
@@ -143,6 +144,7 @@ const StatusStreaming = ({ complete }: { complete: (story: string) => void }) =>
   const [gamePush] = useRecoilState(gamePushState);
   const [displayText, setDisplayText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const startTimeRef = useRef<number>(0);
 
   const storyText = useMemo(() => {
     const storyNode = gamePush?.gamePush?.节点要素?.剧情要素;
@@ -173,6 +175,7 @@ const StatusStreaming = ({ complete }: { complete: (story: string) => void }) =>
 
     setDisplayText("");
     setIsTyping(true);
+    startTimeRef.current = (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
     let index = 0;
     const timer = window.setInterval(() => {
@@ -182,6 +185,9 @@ const StatusStreaming = ({ complete }: { complete: (story: string) => void }) =>
       if (index >= characters.length) {
         window.clearInterval(timer);
         setIsTyping(false);
+        const end = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        const durationMs = Math.max(0, Math.round(end - startTimeRef.current));
+        trackEvent(UmamiEvents.故事生成完成, { chars: characters.length, ms: durationMs });
         complete(buildStoryHtml(storyText));
       }
     }, 35);
@@ -192,7 +198,7 @@ const StatusStreaming = ({ complete }: { complete: (story: string) => void }) =>
   }, [complete, gamePush, storyText]);
 
   return (
-    <div className={`${storyProseClass} mt-4 whitespace-pre-wrap`}>
+    <div className={storyProseClass}>
       {displayText}
       {isTyping && <span className="animate-pulse">▌</span>}
     </div>
@@ -420,6 +426,22 @@ const StatusPlaying = ({ story, onNext, setGameState, imageUrl, imageError, show
   
   const rollDice = useCallback((option: GameOptionType) => {
     setOption(option)
+    try {
+      const baseDiceValue = (option?.骰子?.[0] || 0) + (option?.骰子?.[1] || 0)
+      const totalDiceValue = option?.骰子?.reduce((sum, val) => sum + val, 0) || 0
+      const extraPoints = totalDiceValue - baseDiceValue
+    trackEvent(UmamiEvents.点击剧情选项, {
+        option_type: option?.选项类别,
+        difficulty: option?.选项难度,
+        is_success: !!option?.是否成功,
+      })
+    trackEvent(UmamiEvents.骰子结果出现, {
+        base: baseDiceValue,
+        extra: extraPoints,
+        total: totalDiceValue,
+        success: !!option?.是否成功,
+      })
+    } catch {}
   }, [setOption])
 
   // 检测是否有图片并进入预览状态
@@ -432,6 +454,15 @@ const StatusPlaying = ({ story, onNext, setGameState, imageUrl, imageError, show
       setTempImg(null)
     }
   }, [showImage, imageUrl])
+
+  // 图片预览埋点
+  useEffect(() => {
+    if (isPreviewing && tempImg) {
+      trackEvent(UmamiEvents.打开剧情图片, { image_url: tempImg })
+    } else if (!isPreviewing && tempImg === null) {
+      trackEvent(UmamiEvents.关闭剧情图片)
+    }
+  }, [isPreviewing, tempImg])
 
   // 处理点击屏幕退出预览
   const handlePreviewClick = useCallback(() => {
@@ -503,6 +534,8 @@ const StatusPlaying = ({ story, onNext, setGameState, imageUrl, imageError, show
           变动原因: currentOption.变动原因
         });
 
+        console.log("customresult", result);
+
         setGamePush(result);
         // 切换到流式传输状态，开始播放新的剧情文本
         setGameState({ status: "streaming" });
@@ -518,7 +551,7 @@ const StatusPlaying = ({ story, onNext, setGameState, imageUrl, imageError, show
     }
   }, [option, onNext, char, setGameState, setGamePush, gamePush])
 
-  return <div className="relative mx-auto min-h-[calc(100vh-112px)] w-full max-w-[1120px] px-4 pb-28 text-[20px] text-[#524a37] xl:px-6">
+  return <div className="text-[20px] relative w-full h-[calc(100vh-112px)] text-[#524a37]">
     {isAnalyzing && (
       <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#00000080]">
         <div className="text-white text-[16px]">自定义选项分析中...</div>
@@ -539,16 +572,19 @@ const StatusPlaying = ({ story, onNext, setGameState, imageUrl, imageError, show
       </div>
     )}
     
-    <div className="relative z-40 mx-auto my-4 flex h-[44px] w-full max-w-[820px] flex-row items-center justify-start gap-1 px-3"
+    <div className="w-screen h-[44px] relative z-40 my-4 flex flex-row justify-start px-2 gap-1 items-center"
       style={{ background: `url(${$img('newStory/story-locate')}) center center / 100% 44px no-repeat` }}>
-      <div className="line-clamp-1 text-[15px] text-[#F2EBD9]">{gamePush?.gamePush?.节点要素?.基础信息?.当前任务}</div>
+      <div className="text-[#F2EBD9] text-[15px]">{gamePush?.gamePush?.节点要素?.基础信息?.当前任务}</div>
       <img className="w-[20px] h-[20px]" src={$img('newStory/distance')}></img>
     </div>
     
     {/* 正常内容，在预览状态下隐藏 */}
     {!isPreviewing && (
-      <div className="rounded-[32px] border border-[#d7c49d] bg-[rgba(248,241,225,0.92)] py-4 shadow-[0_18px_40px_rgba(83,55,18,0.08)]">
-        <div className={`${storyProseClass} text-[#111111]`} dangerouslySetInnerHTML={{ __html: story }}/>
+      <div className="px-[24px]">
+        <div
+          className={storyProseClass}
+          dangerouslySetInnerHTML={{ __html: story }}
+        />
         <GameOptions onNext={rollDice} onCustomInput={handleCustomInput} />
         {
           option && <DiceAnimate2 option={option} timeout={handleTimeout} />
@@ -566,7 +602,7 @@ const StatusBreakthrough = ({ breakResult }: { breakResult: BreakthroughResponse
   }, [routerTo])
 
   return (
-  <div className="mx-auto flex max-w-[900px] flex-col items-center p-[24px] text-sm text-[#524a37]">
+  <div className="p-[24px] text-sm text-[#524a37] flex flex-col items-center">
     {/* 突破结果头部图片 */}
     <div className="mx-6 mt-0 -mb-10">
       <img 
@@ -577,7 +613,7 @@ const StatusBreakthrough = ({ breakResult }: { breakResult: BreakthroughResponse
     </div>
     
     {/* 突破内容 */}
-    <div className={`${storyProseClass} mt-12 whitespace-pre-wrap text-[#111111]`}
+    <div className={`${storyProseClass} mt-12 text-[#111111]`}
       dangerouslySetInnerHTML={{ __html: breakResult?.message || "" }}
     >
     </div>
@@ -598,6 +634,8 @@ const PageStory= () => {
   const [updateStrings, setUpdateStrings] = useState<string[]>([]);
   const [imageState, setImageState] = useState<imageGenerationState>({ showImage: false });
   const router = useRouter();
+
+  console.log(gamePush)
 
   // 监听 gamePush 和游戏状态的变化，在故事流式输出结束后再展示图片
   useEffect(() => {
@@ -637,6 +675,9 @@ const PageStory= () => {
 
         // 检查是否有突破结果（通过状态中的特殊字段检测）
         if (res.newStatus && '_breakthrough' in res.newStatus && res.newStatus._breakthrough) {
+          trackEvent(UmamiEvents.浏览突破页面, {
+              success: (res.newStatus as any)._breakthroughSuccess,
+            })
           setGameState({
             breakResult: {
               success: '_breakthroughSuccess' in res.newStatus ? res.newStatus._breakthroughSuccess as boolean : false,
@@ -650,6 +691,11 @@ const PageStory= () => {
 
         // 更新游戏推进状态
         setGamePush(res);
+
+        trackEvent(UmamiEvents.推进成功, {
+            push_id: res.id,
+            next_level: res.newStatus.等级,
+          })
 
         // 计算属性变化
         const list = ['体魄', '道心', '行动点'] as const;
@@ -677,6 +723,9 @@ const PageStory= () => {
             error: res.imageGeneration.error
           };
           setImageState(newImageState);
+          trackEvent(UmamiEvents.触发图片生成, {
+              image_url: res.imageGeneration.imageUrl || undefined,
+            })
         }
         
         // 切换到流式传输状态，开始生成新的故事内容
@@ -684,6 +733,9 @@ const PageStory= () => {
       }
     }).catch((error) => {
       console.error("推进游戏失败:", error);
+      trackEvent(UmamiEvents.推进失败, {
+          reason: (error as Error)?.message || 'unknown'
+        })
       // 出错时回到playing状态
       setGameState({ status: "playing" });
     });
@@ -697,15 +749,20 @@ const PageStory= () => {
     bgmOn();
   }, []);
 
+  // 故事页曝光
+  useEffect(() => {
+    trackPageView('/story')
+  }, [])
+
   return (
-    <div className="w-full overflow-y-scroll pb-8 text-xl font-family-song"
+    <div className="text-xl font-family-song flex flex-col justify-start items-center w-full overflow-y-scroll"
       style={{ letterSpacing: '0.05em' }}>
       {gamePush && <CharStatusBar current={gamePush.newStatus} delta={gamePush.statusDelta} />}
-      <div className="fixed bottom-3 right-0 z-20 h-[50px] w-[90px]">
+      <div className="fixed bottom-3 z-20 right-0 w-[90px] h-[50px]">
         <img className="w-full mt-auto" src={$img('newStory/bgm-b')} alt="" />
         {isPlaying ? 
-          <img onClick={bgmSwitch} className="absolute w-[44px] left-[55%] -translate-1/2 top-0" src={$img('bgm-play2')} alt="bgm-toggle" /> :
-          <img onClick={bgmSwitch} className="absolute w-[44px] left-[55%] -translate-1/2 top-0" src={$img('bgm-stop')} alt="bgm-toggle" />
+          <img onClick={() => { trackEvent(UmamiEvents.切换背景音乐, { is_playing: false }); bgmSwitch() }} className="absolute w-[44px] left-[55%] -translate-1/2 top-0" src={$img('bgm-play2')} alt="bgm-toggle" /> :
+          <img onClick={() => { trackEvent(UmamiEvents.切换背景音乐, { is_playing: true }); bgmSwitch() }} className="absolute w-[44px] left-[55%] -translate-1/2 top-0" src={$img('bgm-stop')} alt="bgm-toggle" />
         }
       </div>
       {/* {updateStrings?.length > 0 && <AttributeUpdate updateStrings={updateStrings} />} */}
