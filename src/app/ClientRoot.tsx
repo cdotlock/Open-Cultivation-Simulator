@@ -14,6 +14,11 @@ type DesktopPreviewSize = {
   height: number
 }
 
+const PREVIEW_VIEWPORT = {
+  width: 390,
+  height: 844,
+}
+
 const CustomHeader = () => {
   const router = useRouter()
   const { user, isLoggedIn, isInitialized } = useLogin()
@@ -112,17 +117,14 @@ const ClientRoot: FC<{ children: React.ReactNode }> = ({ children }) => {
       const isDesktop = window.innerWidth >= 768 && !embeddedPreview
 
       if (isDesktop) {
-        const availableWidth = window.innerWidth - 24
-        const availableHeight = window.innerHeight - 24
-        const aspect = 430 / 932
-        let width = availableHeight * aspect
-        let height = availableHeight
-
-        const maxWidth = Math.min(availableWidth, 520)
-        if (width > maxWidth) {
-          width = maxWidth
-          height = width / aspect
-        }
+        const safeHorizontalPadding = 32
+        const safeVerticalPadding = 32
+        const availableWidth = Math.max(320, window.innerWidth - safeHorizontalPadding)
+        const availableHeight = Math.max(640, window.innerHeight - safeVerticalPadding)
+        const aspect = PREVIEW_VIEWPORT.width / PREVIEW_VIEWPORT.height
+        const widthByHeight = availableHeight * aspect
+        const width = Math.min(PREVIEW_VIEWPORT.width, availableWidth, widthByHeight)
+        const height = width / aspect
 
         params.set("mobilePreview", "1")
         const query = params.toString()
@@ -145,7 +147,7 @@ const ClientRoot: FC<{ children: React.ReactNode }> = ({ children }) => {
 
   if (showDesktopPreview) {
     return (
-      <div className="flex min-h-screen w-full items-start justify-center overflow-auto bg-[#d9cfbf] bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.82),_rgba(228,216,196,0.95)_48%,_rgba(210,192,164,0.96))] p-3">
+      <div className="flex min-h-screen w-full items-center justify-center overflow-auto bg-[#d9cfbf] bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.82),_rgba(228,216,196,0.95)_48%,_rgba(210,192,164,0.96))] p-4">
         <iframe
           title="mobile-preview"
           src={iframeSrc}
