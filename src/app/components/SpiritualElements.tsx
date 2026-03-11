@@ -21,7 +21,7 @@ export const SpiritualElements = ({ selectedSpiritRoot, onSpiritRootSelect }: Sp
               : 'text-[#11111180]'
           }`}
         >
-          <div className="[font-family:'Huiwen-mincho-Regular',Helvetica] font-normal text-xl text-center tracking-[-1.00px] leading-[normal] whitespace-nowrap">
+          <div className="font-family-song text-center text-xl font-normal leading-[normal] whitespace-nowrap tracking-[-1.00px]">
             {element}
           </div>
           

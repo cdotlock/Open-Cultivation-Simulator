@@ -11,7 +11,7 @@ export const AttributePointsSection = ({ remainingPoints = 7, totalPoints = 7 })
           src={$img('char/task_dec_right')}
         />
 
-        <div className="relative flex-shrink-0 mt-[-1.00px] [font-family:'Huiwen-mincho-Regular',Helvetica] font-normal text-[#111111] text-sm text-center tracking-[0] leading-[normal] whitespace-nowrap">
+        <div className="relative mt-[-1.00px] flex-shrink-0 font-family-song text-center text-sm font-normal leading-[normal] whitespace-nowrap text-[#111111] tracking-[0]">
           分配属性点
         </div>
 
@@ -22,7 +22,7 @@ export const AttributePointsSection = ({ remainingPoints = 7, totalPoints = 7 })
         />
       </div>
 
-      <div className="relative self-stretch text-[#11111180] text-xs tracking-[0] [font-family:'Huiwen-mincho-Regular',Helvetica] font-normal text-center leading-[normal]">
+      <div className="relative self-stretch font-family-song text-center text-xs font-normal leading-[normal] text-[#11111180] tracking-[0]">
         剩余：{remainingPoints}/{totalPoints}
       </div>
     </div>

@@ -27,7 +27,7 @@
 @theme {
   --animate-fade-in: fade-in 0.3s ease-out;
   --animate-fade-out: fade-out 0.3s ease-in both;
-  --font-family-song: "Source Han Serif CN for Display", sans-serif;
+  --font-family-song: "Huiwen-mincho", "Source Han Serif CN for Display", sans-serif;
   
   @keyframes fade-in {
     0% {
@@ -51,4 +51,11 @@
 
 body {
   font-family: "Huiwen-mincho", "Source Han Serif CN for Display", sans-serif;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
 }

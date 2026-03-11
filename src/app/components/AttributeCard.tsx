@@ -25,7 +25,7 @@ export const AttributeCard = ({ title, description, extraValue, initialValue = 1
   return (
     <div className="grid min-h-[72px] w-full grid-cols-[1fr_auto] items-center rounded-xl border border-solid border-[#cec498] bg-[#f4f1e1] px-3 py-2">
       <div>
-        <div className="[font-family:'Huiwen-mincho-Regular',Helvetica] text-xl leading-none text-[#111111]">
+        <div className="font-family-song text-xl leading-none text-[#111111]">
           {title}
         </div>
         <div className="mt-2 text-xs leading-none text-[#11111199]">
@@ -46,7 +46,7 @@ export const AttributeCard = ({ title, description, extraValue, initialValue = 1
           />
         </button>
 
-        <div className="relative w-fit [font-family:'Huiwen-mincho-Regular',Helvetica] font-normal text-black text-xl tracking-[-1.00px] leading-[normal] whitespace-nowrap">
+        <div className="relative w-fit font-family-song text-xl font-normal leading-[normal] whitespace-nowrap text-black tracking-[-1.00px]">
           {initialValue + extraValue}
         </div>
 

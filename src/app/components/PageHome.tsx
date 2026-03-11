@@ -1,12 +1,10 @@
 import { $img } from '@/utils'
-import { ramdomFirstName, ramdomIdentity, ramdomLastName, randomAttributeDistribution443 } from '@/utils/ramdom'
 import { useCallback, useEffect, useState } from 'react';
 import { deleteCharacter, getCharacterById } from '@/app/actions/character/action'
 import { useUuid, useLogin } from '../hooks/useLogin';
 import { CharacterDescriptionType, CharacterStatusType } from "@/interfaces/schemas"
 import charConfig from './const/char';
 import useRoute from '../hooks/useRoute';
-import useGameControll from '../hooks/useGameControll';
 import { useCharacterCrud } from '../hooks/charCrud';
 
 import { useAction } from '../hooks/useAction';
@@ -17,8 +15,6 @@ import { useRecoilState } from 'recoil';
 import { useRouter } from 'next/navigation';
 import { trackEvent, trackPageView, UmamiEvents, track } from '@/lib/analytics/umami';
 
-const traitList = ["聪慧", "财富", "魅力", "幸运", "野性", "贫穷", "隐匿", "诅咒"]
-
 export default function PageHome() {
   const { routerTo } = useRoute()
   const router = useRouter()
@@ -27,8 +23,6 @@ export default function PageHome() {
   // const [charList, setCharList] = useState<charList>([]);
   const { startGame } = useStartGame()
   const [char, setChar] = useRecoilState(characterState)
-  const { toCreateLoadingPage } = useGameControll(uuid)
-  const [firstClick, setFirstClick] = useState(true)
   const {
     handleCharacterSelect,
     shareCharacter,
@@ -71,26 +65,6 @@ export default function PageHome() {
     }
     callback()
   }, [uuid])
-
-  const toCreateLoadingPageRandom = useCallback((traitCount: number = 3) => {
-    const firstName = ramdomFirstName();
-    const lastName = ramdomLastName();
-    const identity = ramdomIdentity();
-
-    const shuffledTraits = [...traitList]
-      .sort(() => Math.random() - 0.5)
-      .slice(0, traitCount);
-    const traitStr = shuffledTraits.join(" ");
-
-    // 随机分配443点属性
-    const attributePoints = randomAttributeDistribution443();
-
-    // 随机选择灵根
-    const spiritRoots = ["金灵根", "木灵根", "水灵根", "火灵根", "土灵根"];
-    const randomSpiritRoot = spiritRoots[Math.floor(Math.random() * spiritRoots.length)];
-
-    toCreateLoadingPage([firstName, lastName, identity], traitStr, attributePoints, randomSpiritRoot)
-  }, [toCreateLoadingPage]);
 
   const renderCharList = useCallback(() => {
     // 只有在登录状态下才获取角色列表
@@ -206,16 +180,9 @@ export default function PageHome() {
         trackEvent(UmamiEvents.快速生成角色, { source: 'create_button' })
         routerTo("create")
       })} className='w-full px-[8px] mt-[33px]' src={$img('btn-create-char-new')} alt="create-char" />
-      <div className="mt-[12px] w-full px-[8px]">
-        <img onClick={() => checkLoginAndExecute(() => {
-          track('web.index.play_now.click')
-          trackEvent(UmamiEvents.快速生成角色, { source: 'quick_start' })
-          toCreateLoadingPageRandom()
-        })} className="w-full" src={$img('btn-play-now-new')} alt="play-now" />
-      </div>
       {
         isLoggedIn && !!charList.length && (
-          <img className="w-[42%] mt-[38px]" src={$img('btn-reincarnation')} alt="btn-reincarnation" />
+          <img className="w-[42%] mt-[14px]" src={$img('btn-reincarnation')} alt="btn-reincarnation" />
         )
       }
       {

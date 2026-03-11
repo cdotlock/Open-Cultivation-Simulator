@@ -30,7 +30,7 @@ export const SpiritualRootSection = ({ selectedSpiritRoot }: SpiritualRootSectio
           src={$img('char/task_dec_right')}
         />
 
-        <div className="relative w-fit mt-[-1.00px] [font-family:'Huiwen-mincho-Regular',Helvetica] font-normal text-[#111111] text-sm text-center tracking-[0] leading-[normal] whitespace-nowrap">
+        <div className="relative mt-[-1.00px] w-fit font-family-song text-center text-sm font-normal leading-[normal] whitespace-nowrap text-[#111111] tracking-[0]">
           选择灵根
         </div>
 
@@ -41,7 +41,7 @@ export const SpiritualRootSection = ({ selectedSpiritRoot }: SpiritualRootSectio
         />
       </div>
 
-      <div className="relative self-stretch text-[#11111180] text-xs tracking-[0] [font-family:'Huiwen-mincho-Regular',Helvetica] font-normal text-center leading-[normal]">
+      <div className="relative self-stretch font-family-song text-center text-xs font-normal leading-[normal] text-[#11111180] tracking-[0]">
         {getBonusText()}
       </div>
     </div>
