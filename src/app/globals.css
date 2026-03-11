@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+/* @font-face {
+  font-family: 'song';
+  font-weight: 400;
+  src: url("/ChillJinshuSongRegular.woff2");
+}
+
+@font-face {
+  font-family: 'song';
+  font-weight: 500;
+  src: url("/ChillJinshuSongMedium.woff2");
+}
+
+@font-face {
+  font-family: 'song';
+  font-weight: 700;
+  src: url("/ChillJinshuSongBold.woff2");
+} */
+
+/* @font-face {
+  font-family: 'ming';
+  src: url('/Huiwen-mincho.woff2');
+} */
+
+
+@theme {
+  --animate-fade-in: fade-in 0.3s ease-out;
+  --animate-fade-out: fade-out 0.3s ease-in both;
+  --font-family-song: "Source Han Serif CN for Display", sans-serif;
+  
+  @keyframes fade-in {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+  
+  @keyframes fade-out {
+    0% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+}
+
+
+body {
+  font-family: "Huiwen-mincho", "Source Han Serif CN for Display", sans-serif;
+  background: #f2ebd9;
+}
+
+.story-prose {
+  letter-spacing: 0.04em;
+}
+
+.story-prose p + p {
+  margin-top: 1.4em;
+}

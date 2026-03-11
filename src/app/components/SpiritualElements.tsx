@@ -1,0 +1,45 @@
+import { $img } from "@/utils";
+import React from "react";
+
+interface SpiritualElementsProps {
+  selectedSpiritRoot: number | null;
+  onSpiritRootSelect: (index: number) => void;
+}
+
+export const SpiritualElements = ({ selectedSpiritRoot, onSpiritRootSelect }: SpiritualElementsProps) => {
+  const elements = ['金', '木', '水', '火', '土'];
+  
+  return (
+    <div className="grid w-full grid-cols-5 items-center justify-evenly gap-2">
+      {elements.map((element, index) => (
+        <div 
+          key={element}
+          onClick={() => onSpiritRootSelect(index)}
+          className={`relative flex h-16 w-full items-center justify-center rounded-xl border border-[#d8c89f] bg-[rgba(255,250,242,0.85)] cursor-pointer ${
+            selectedSpiritRoot === index 
+              ? 'text-[#111111] shadow-[0_8px_18px_rgba(149,111,57,0.14)]' 
+              : 'text-[#11111180]'
+          }`}
+        >
+          <div className="[font-family:'Huiwen-mincho-Regular',Helvetica] font-normal text-xl text-center tracking-[-1.00px] leading-[normal] whitespace-nowrap">
+            {element}
+          </div>
+          
+          {/* 选中状态使用图片框选 */}
+          {selectedSpiritRoot === index && (
+            <img 
+              className="absolute w-12 h-12 shrink-0"
+              style={{ 
+                transform: 'translate(-50%, -50%)',
+                top: '50%',
+                left: '50%'
+              }}
+              alt="Group" 
+              src={$img('char/attr-active')}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};

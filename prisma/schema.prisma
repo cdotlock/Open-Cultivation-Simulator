@@ -1,0 +1,187 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/app/actions/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  uuid          String?        @unique @default(uuid())
+  phone         String?        @unique // 手机号，用于登录
+  email         String?        @unique
+  avatar        String?
+  name          String?
+  password      String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  characters    Character[]
+
+  // 复活相关字段
+  freeReviveUsed  Boolean @default(false) // 是否使用过免费复活
+  paidReviveCount Int     @default(0) // 付费复活次数
+}
+
+model Dictionary {
+  id             Int      @id @default(autoincrement())
+  key            String   @unique
+  value          String
+  modelName      String?
+  enableThinking Boolean?
+}
+
+model Character {
+  id           Int      @id @default(autoincrement())
+  name         String
+  createPrompt String
+  description  Json
+  cover        String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  userUuid     String? // 用户UUID外键
+  user         User?    @relation(fields: [userUuid], references: [uuid])
+
+  isDeleted Boolean @default(false)
+
+  // 加点属性
+  charmPoints  Int @default(0) // 魅力加点
+  spiritPoints Int @default(0) // 神识加点
+  skillPoints  Int @default(0) // 身手加点
+
+  // 灵根
+  spiritRoot String? // 灵根类型
+
+  currentPushId Int?           @unique // 当前游戏进度ID
+  currentPush   GamePush?      @relation("CurrentProgress", fields: [currentPushId], references: [id])
+  gamePush      GamePush[]     @relation("OwnerCharacter")
+  storySegments StorySegment[] // 小说片段
+
+  // 所有角色都能被分享
+  sharedFromCharacterId Int? // 源角色ID（来自哪个原始角色）
+  sharedFromCharacter   Character?     @relation("SharedCharacter", fields: [sharedFromCharacterId], references: [id])
+  sharedCharacters      Character[]    @relation("SharedCharacter") // 被分享出去的副本角色
+  avatars               Avatar[]
+}
+
+model Avatar {
+  id          Int       @id @default(autoincrement())
+  url         String
+  prompt      String
+  isMain      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  characterId Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([characterId])
+}
+
+model AvatarTask {
+  id          String   @id @default(uuid())
+  status      String // PENDING, PROCESSING, SUCCESS, FAILED
+  prompt      String
+  characterId Int
+  userUuid    String
+  resultUrl   String?
+  error       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userUuid, createdAt])
+  @@index([characterId])
+  @@index([status])
+}
+
+model GamePush {
+  id               Int           @id @default(autoincrement())
+  info             Json
+  characterId      Int
+  character        Character     @relation("OwnerCharacter", fields: [characterId], references: [id])
+  currentCharacter Character?    @relation("CurrentProgress")
+  isSummary        Boolean       @default(false)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  choice           String?
+  storySegment     StorySegment? // 对应的小说片段
+
+  // 记忆等级
+  level Int @default(0)
+
+  // 是否被选择
+  isChoice Boolean @default(false)
+
+  // 加载完成类型 0 loading 1 success 2 error
+  finishType Int @default(0)
+
+  // 角色状态
+  status Json?
+
+  // 父子关系
+  fatherId Int?
+  father   GamePush?  @relation("NextGamePush", fields: [fatherId], references: [id])
+  children GamePush[] @relation("NextGamePush")
+}
+
+model PromptHistory {
+  id             Int      @id @default(autoincrement())
+  name           String // prompt名称 (如: character_prompt, story_prompt等)
+  content        String // prompt内容
+  description    String? // 备注说明
+  version        Int      @default(1) // 版本号
+  isActive       Boolean  @default(false) // 是否为当前活跃版本
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  modelName      String?
+  enableThinking Boolean?
+
+  @@unique([name, version]) // 同一名称的prompt不能有重复版本号
+  @@index([name, isActive]) // 快速查询某个prompt的活跃版本
+}
+
+model LlmCallLog {
+  id    Int    @id @default(autoincrement())
+  model String // 使用的模型名称
+
+  systemPrompt    String? // 输入的系统prompt
+  prompt          String // 输入的prompt
+  schema          String // 使用的schema (JSON字符串)
+  result          String? // 生成的结果 (JSON字符串)
+  success         Boolean // 是否成功
+  errorMessage    String? // 错误信息
+  attemptCount    Int      @default(1) // 重试次数
+  usedRepair      Boolean  @default(false) // 是否使用了修复机制
+  usedLlmRepair   Boolean  @default(false) // 是否使用了LLM修复
+  duration        Int? // 执行耗时(毫秒)
+  maxTokens       Int? // 最大token数
+  providerOptions String? // 提供者选项 (JSON字符串)
+  createdAt       DateTime @default(now())
+  userUuid        String?
+  gameId          Int?
+  promptTemplate  String?
+
+  @@index([createdAt]) // 按时间排序索引
+  @@index([model]) // 按模型索引
+  @@index([success]) // 按成功状态索引
+}
+
+model StorySegment {
+  id          Int       @id @default(autoincrement())
+  characterId Int // 角色ID
+  character   Character @relation(fields: [characterId], references: [id])
+  gamePushId  Int       @unique // 游戏推进ID，一对一关系
+  gamePush    GamePush  @relation(fields: [gamePushId], references: [id])
+  content     String // 小说内容
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([characterId, createdAt]) // 按角色和时间排序索引
+  @@index([gamePushId]) // 按游戏推进索引
+}

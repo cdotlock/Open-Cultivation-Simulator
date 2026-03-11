@@ -1,0 +1,12 @@
+{
+  "mcpServers": [
+    {
+      "name": "mobai",
+      "url": "http://127.0.0.1:3009/mcp"
+    }
+  ],
+  "skills": [
+    "skills/mobai-gameplay/SKILL.md",
+    "skills/mobai-refactor/SKILL.md"
+  ]
+}
