@@ -20,8 +20,6 @@ type DiceOverlayProps = {
  * - 在框体中展示两枚骰子的点数（滚动时快速随机，收到结果后显示最终值）
  */
 export const DiceOverlay: React.FC<DiceOverlayProps> = ({ show, rollingDice, finalDice, difficultyText, dcValue, resultSuccess, onClose }) => {
-  if (!show) return null;
-
   const topUrl = '/subtract.svg';
   const topMaskUrl = '/mask-group.png';
   const bottomUrl = '/group-1312335718@2x.png';
@@ -44,25 +42,34 @@ export const DiceOverlay: React.FC<DiceOverlayProps> = ({ show, rollingDice, fin
   const [bounceR, setBounceR] = React.useState(false);
 
   React.useEffect(() => {
-    if (show) {
+    if (!show) {
       setEntered(false);
-      const t = setTimeout(() => setEntered(true), 10);
-      return () => clearTimeout(t);
+      return;
     }
+    const t = setTimeout(() => setEntered(true), 10);
+    return () => clearTimeout(t);
   }, [show]);
 
   // 数字变化时做一次缩放动画，增强“滚动感”
   React.useEffect(() => {
+    if (!show) {
+      return;
+    }
     setBounceL(true);
     const t = setTimeout(() => setBounceL(false), 180);
     return () => clearTimeout(t);
-  }, [d1]);
+  }, [d1, show]);
 
   React.useEffect(() => {
+    if (!show) {
+      return;
+    }
     setBounceR(true);
     const t = setTimeout(() => setBounceR(false), 180);
     return () => clearTimeout(t);
-  }, [d2]);
+  }, [d2, show]);
+
+  if (!show) return null;
 
 
   return (
@@ -154,5 +161,4 @@ export const DiceOverlay: React.FC<DiceOverlayProps> = ({ show, rollingDice, fin
 };
 
 export default DiceOverlay;
-
 

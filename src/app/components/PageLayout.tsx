@@ -5,19 +5,23 @@ import PageCreateChar from "./PageCreateChar";
 import PageLoading from "./PageLoading";
 import PageChar from './PageChar';
 import PageStory from './PageStory';
-import { useRecoilState } from 'recoil';
-import { pageState } from '@/app/store'
+import { useRecoilState, useRecoilValue } from 'recoil';
+import { characterState, gamePushState, pageState, pages, PageType } from '@/app/store'
 import { useEffect, useState } from "react";
 import Image from "next/image";
 
 import { useCharacterCrud } from "../hooks/charCrud";
+import { useAction } from "../hooks/useAction";
 import { $img } from "@/utils";
 
 export default function PageLayout() {
-  const [page] = useRecoilState(pageState)
+  const [page, setPage] = useRecoilState(pageState)
+  const [char, setChar] = useRecoilState(characterState)
+  const gamePush = useRecoilValue(gamePushState)
   const [mounted, setMounted] = useState(false)
+  const [urlBootstrapped, setUrlBootstrapped] = useState(false)
   const { handleImportCharacter } = useCharacterCrud()
-
+  const { getCharacterById } = useAction()
 
   // 防止 hydration 错误
   useEffect(() => {
@@ -32,19 +36,85 @@ export default function PageLayout() {
   // }, [needsLogin, page, routerTo])
 
   useEffect(() => {
-    // 只在客户端执行
-    if (!mounted) return
-    
-    // 获取 URL 参数
-    const search = new URLSearchParams(window.location.search);
-    const id = search.get('id');
-    
-    if (id) {
-      // 清空 url 参数且不刷新
-      window.history.replaceState({}, '', `${window.location.pathname}`);
-      handleImportCharacter(id)
+    if (!mounted || urlBootstrapped) {
+      return
     }
-  }, [handleImportCharacter, mounted]);
+
+    let cancelled = false
+
+    const syncFromUrl = async () => {
+      const search = new URLSearchParams(window.location.search)
+      const importId = search.get("id")
+      const requestedView = search.get("view")
+      const requestedCharacterId = Number(search.get("characterId") || "")
+      const nextSearch = new URLSearchParams(search)
+
+      if (importId) {
+        nextSearch.delete("id")
+        const nextUrl = nextSearch.toString()
+          ? `${window.location.pathname}?${nextSearch.toString()}`
+          : window.location.pathname
+        window.history.replaceState({}, "", nextUrl)
+        handleImportCharacter(importId)
+      }
+
+      if (Number.isFinite(requestedCharacterId) && requestedCharacterId > 0 && char?.id !== requestedCharacterId) {
+        try {
+          const nextCharacter = await getCharacterById(requestedCharacterId)
+          if (!cancelled) {
+            setChar(nextCharacter)
+          }
+        } catch {
+          if (!cancelled) {
+            setPage("home")
+          }
+        }
+      }
+
+      if (!cancelled && requestedView && pages.includes(requestedView as PageType)) {
+        const nextPage = requestedView as PageType
+        setPage(nextPage === "story" && !gamePush ? "char" : nextPage)
+      }
+
+      if (!cancelled) {
+        setUrlBootstrapped(true)
+      }
+    }
+
+    syncFromUrl()
+
+    return () => {
+      cancelled = true
+    }
+  }, [char?.id, gamePush, getCharacterById, handleImportCharacter, mounted, setChar, setPage, urlBootstrapped]);
+
+  useEffect(() => {
+    if (!mounted || !urlBootstrapped) {
+      return
+    }
+
+    const safePage = page === "story" && !gamePush ? "char" : page
+    const nextSearch = new URLSearchParams(window.location.search)
+
+    nextSearch.delete("view")
+    nextSearch.delete("characterId")
+
+    if (safePage !== "home") {
+      nextSearch.set("view", safePage)
+    }
+
+    if (char?.id && safePage !== "home" && safePage !== "create") {
+      nextSearch.set("characterId", String(char.id))
+    }
+
+    const nextQuery = nextSearch.toString()
+    const nextUrl = nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname
+    const currentUrl = `${window.location.pathname}${window.location.search}`
+
+    if (nextUrl !== currentUrl) {
+      window.history.replaceState({}, "", nextUrl)
+    }
+  }, [char?.id, gamePush, mounted, page, urlBootstrapped]);
 
   return (
     <div className="flex flex-col items-center justify-start min-h-[calc(100vh-48px)] overflow-hidden bg-[#F2EBD9]">

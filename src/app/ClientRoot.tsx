@@ -14,9 +14,24 @@ type DesktopPreviewSize = {
   height: number
 }
 
-const PREVIEW_VIEWPORT = {
-  width: 390,
-  height: 844,
+const PREVIEW_CANVAS = {
+  width: 430,
+  height: 932,
+}
+
+function getDesktopPreviewSize(viewportWidth: number, viewportHeight: number): DesktopPreviewSize {
+  const horizontalPadding = Math.max(24, Math.min(72, viewportWidth * 0.06))
+  const verticalPadding = Math.max(20, Math.min(48, viewportHeight * 0.05))
+  const availableWidth = Math.max(320, viewportWidth - horizontalPadding * 2)
+  const availableHeight = Math.max(540, viewportHeight - verticalPadding * 2)
+  const scaleByWidth = availableWidth / PREVIEW_CANVAS.width
+  const scaleByHeight = availableHeight / PREVIEW_CANVAS.height
+  const scale = Math.min(scaleByWidth, scaleByHeight, 1.08)
+
+  return {
+    width: Math.round(PREVIEW_CANVAS.width * scale),
+    height: Math.round(PREVIEW_CANVAS.height * scale),
+  }
 }
 
 const CustomHeader = () => {
@@ -108,7 +123,7 @@ const ClientRoot: FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isMounted, setIsMounted] = useState(false)
   const [showDesktopPreview, setShowDesktopPreview] = useState(false)
   const [iframeSrc, setIframeSrc] = useState("/")
-  const [previewSize, setPreviewSize] = useState<DesktopPreviewSize>({ width: 430, height: 932 })
+  const [previewSize, setPreviewSize] = useState<DesktopPreviewSize>(PREVIEW_CANVAS)
 
   useEffect(() => {
     const evaluateMode = () => {
@@ -117,19 +132,10 @@ const ClientRoot: FC<{ children: React.ReactNode }> = ({ children }) => {
       const isDesktop = window.innerWidth >= 768 && !embeddedPreview
 
       if (isDesktop) {
-        const safeHorizontalPadding = 32
-        const safeVerticalPadding = 32
-        const availableWidth = Math.max(320, window.innerWidth - safeHorizontalPadding)
-        const availableHeight = Math.max(640, window.innerHeight - safeVerticalPadding)
-        const aspect = PREVIEW_VIEWPORT.width / PREVIEW_VIEWPORT.height
-        const widthByHeight = availableHeight * aspect
-        const width = Math.min(PREVIEW_VIEWPORT.width, availableWidth, widthByHeight)
-        const height = width / aspect
-
         params.set("mobilePreview", "1")
         const query = params.toString()
-        setIframeSrc(`${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`)
-        setPreviewSize({ width, height })
+        setIframeSrc(`${window.location.origin}${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`)
+        setPreviewSize(getDesktopPreviewSize(window.innerWidth, window.innerHeight))
       }
 
       setShowDesktopPreview(isDesktop)
@@ -147,16 +153,20 @@ const ClientRoot: FC<{ children: React.ReactNode }> = ({ children }) => {
 
   if (showDesktopPreview) {
     return (
-      <div className="flex min-h-screen w-full items-center justify-center overflow-auto bg-[#d9cfbf] bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.82),_rgba(228,216,196,0.95)_48%,_rgba(210,192,164,0.96))] p-4">
-        <iframe
-          title="mobile-preview"
-          src={iframeSrc}
-          className="border-0 bg-white shadow-[0_16px_40px_rgba(66,49,28,0.12)]"
+      <div className="flex min-h-screen w-full items-center justify-center overflow-auto bg-[#ddd1bc] px-6 py-5">
+        <div
+          className="overflow-hidden rounded-[28px] border border-[rgba(112,82,44,0.18)] bg-[#f7f1e3] shadow-[0_24px_60px_rgba(42,29,15,0.14)]"
           style={{
             width: `${previewSize.width}px`,
             height: `${previewSize.height}px`,
           }}
-        />
+        >
+          <iframe
+            title="mobile-preview"
+            src={iframeSrc}
+            className="h-full w-full border-0 bg-white"
+          />
+        </div>
       </div>
     )
   }

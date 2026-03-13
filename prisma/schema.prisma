@@ -60,6 +60,9 @@ model Character {
   // 灵根
   spiritRoot String? // 灵根类型
 
+  worldId Int?
+  world   World?  @relation(fields: [worldId], references: [id])
+
   currentPushId Int?           @unique // 当前游戏进度ID
   currentPush   GamePush?      @relation("CurrentProgress", fields: [currentPushId], references: [id])
   gamePush      GamePush[]     @relation("OwnerCharacter")
@@ -70,6 +73,8 @@ model Character {
   sharedFromCharacter   Character?     @relation("SharedCharacter", fields: [sharedFromCharacterId], references: [id])
   sharedCharacters      Character[]    @relation("SharedCharacter") // 被分享出去的副本角色
   avatars               Avatar[]
+  factionState          CharacterFactionState?
+  factionMissions       FactionMission[]
 }
 
 model Avatar {
@@ -184,4 +189,182 @@ model StorySegment {
 
   @@index([characterId, createdAt]) // 按角色和时间排序索引
   @@index([gamePushId]) // 按游戏推进索引
+}
+
+model World {
+  id          Int       @id @default(autoincrement())
+  name        String
+  seed        String
+  worldTurn   Int       @default(0)
+  season      String
+  timePhase   String
+  newsSummary String?
+  summary     Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  characters      Character[]
+  mapNodes        MapNode[]
+  factions        Faction[]
+  relations       FactionRelation[]
+  events          WorldEvent[]
+  factionMissions FactionMission[]
+}
+
+model MapNode {
+  id          Int      @id @default(autoincrement())
+  worldId     Int
+  world       World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  name        String
+  type        String
+  positionX   Float
+  positionY   Float
+  terrain     String
+  resourceTags Json
+  neighborNodeIds Json?
+  prosperity  Int      @default(50)
+  danger      Int      @default(20)
+  ownerFactionId Int?
+  ownerFaction   Faction? @relation("FactionOwnedNode", fields: [ownerFactionId], references: [id])
+  capitalOfFaction Faction? @relation("FactionCapitalNode")
+  currentCharacters CharacterFactionState[] @relation("CharacterCurrentNode")
+  factionMissions  FactionMission[]
+
+  @@index([worldId])
+  @@index([ownerFactionId])
+}
+
+model Faction {
+  id                Int      @id @default(autoincrement())
+  worldId           Int
+  world             World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  name              String
+  title             String
+  type              String
+  elementAffinity   String
+  doctrine          String
+  styleTags         Json
+  leaderName        String
+  leaderArchetype   String
+  strengthMilitary  Int
+  strengthEconomy   Int
+  strengthEspionage Int
+  strengthHeritage  Int
+  stability         Int
+  reputation        Int
+  aggression        Int
+  expansionDesire   Int
+  capitalNodeId     Int?     @unique
+  capitalNode       MapNode? @relation("FactionCapitalNode", fields: [capitalNodeId], references: [id])
+  controlledNodeIds Json
+  goal              String
+  currentPlan       Json?
+  recentObservations Json?
+  importantMemories Json?
+  strategicReflections Json?
+  lastExecutedAction String?
+  playerFacingSummary String?
+
+  ownedNodes        MapNode[] @relation("FactionOwnedNode")
+  characterStates   CharacterFactionState[]
+  outgoingRelations FactionRelation[] @relation("FactionRelationFrom")
+  incomingRelations FactionRelation[] @relation("FactionRelationTo")
+  events            WorldEvent[] @relation("WorldEventFaction")
+  secondaryEvents   WorldEvent[] @relation("WorldEventSecondaryFaction")
+  missions          FactionMission[]
+
+  @@index([worldId])
+}
+
+model FactionRelation {
+  id             Int      @id @default(autoincrement())
+  worldId        Int
+  world          World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  fromFactionId  Int
+  fromFaction    Faction  @relation("FactionRelationFrom", fields: [fromFactionId], references: [id], onDelete: Cascade)
+  toFactionId    Int
+  toFaction      Faction  @relation("FactionRelationTo", fields: [toFactionId], references: [id], onDelete: Cascade)
+  relationType   String
+  relationScore  Int
+  lastReason     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([worldId, fromFactionId, toFactionId])
+  @@index([worldId])
+}
+
+model CharacterFactionState {
+  id                  Int      @id @default(autoincrement())
+  characterId         Int      @unique
+  character           Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  factionId           Int
+  faction             Faction   @relation(fields: [factionId], references: [id], onDelete: Cascade)
+  currentNodeId       Int?
+  currentNode         MapNode?  @relation("CharacterCurrentNode", fields: [currentNodeId], references: [id])
+  rank                String
+  contribution        Int       @default(0)
+  trust               Int       @default(50)
+  militaryCredit      Int       @default(0)
+  politicalStanding   Int       @default(0)
+  factionGoalProgress Int       @default(0)
+  factionRole         String
+  factionExpectation  String
+  activeMissionId     Int?
+  activeMission       FactionMission? @relation("CharacterActiveMission", fields: [activeMissionId], references: [id])
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([factionId])
+}
+
+model WorldEvent {
+  id               Int      @id @default(autoincrement())
+  worldId          Int
+  world            World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  factionId        Int?
+  faction          Faction? @relation("WorldEventFaction", fields: [factionId], references: [id])
+  secondaryFactionId Int?
+  secondaryFaction Faction? @relation("WorldEventSecondaryFaction", fields: [secondaryFactionId], references: [id])
+  type             String
+  title            String
+  summary          String
+  payload          Json?
+  importance       Int      @default(1)
+  turn             Int
+  createdAt        DateTime @default(now())
+
+  factionMissions  FactionMission[]
+
+  @@index([worldId, turn])
+}
+
+model FactionMission {
+  id                    Int      @id @default(autoincrement())
+  worldId               Int
+  world                 World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  factionId             Int
+  faction               Faction  @relation(fields: [factionId], references: [id], onDelete: Cascade)
+  characterId           Int?
+  character             Character? @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  targetNodeId          Int?
+  targetNode            MapNode? @relation(fields: [targetNodeId], references: [id])
+  sourceEventId         Int?
+  sourceEvent           WorldEvent? @relation(fields: [sourceEventId], references: [id])
+  title                 String
+  category              String
+  description           String
+  status                String   @default("ACTIVE")
+  rewardContribution    Int      @default(10)
+  rewardTrust           Int      @default(2)
+  rewardMilitaryCredit  Int      @default(1)
+  rewardPoliticalStanding Int    @default(0)
+  progress              Int      @default(0)
+  goal                  Int      @default(1)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  assignees             CharacterFactionState[] @relation("CharacterActiveMission")
+
+  @@index([worldId, factionId, status])
 }

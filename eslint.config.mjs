@@ -10,15 +10,20 @@ const compat = new FlatCompat({
   baseDirectory: __dirname,
 });
 
-const eslintConfig = [
+const eslintConfig = defineConfig([
+  {
+    ignores: [
+      "**/generated/**",
+      "src/app/actions/generated/prisma/**",
+    ],
+  },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
-  ...defineConfig({
-    ignores: ["**/generated/**"],
+  {
     rules: {
       "@next/next/no-img-element": "off",
-      "@typescript-eslint/no-unused-vars": "warn"
-    }
-  })
-];
+      "@typescript-eslint/no-unused-vars": "warn",
+    },
+  },
+]);
 
 export default eslintConfig;

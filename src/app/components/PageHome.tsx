@@ -22,7 +22,7 @@ export default function PageHome() {
   const { isLoggedIn } = useLogin()
   // const [charList, setCharList] = useState<charList>([]);
   const { startGame } = useStartGame()
-  const [char, setChar] = useRecoilState(characterState)
+  const [, setChar] = useRecoilState(characterState)
   const {
     handleCharacterSelect,
     shareCharacter,
@@ -170,7 +170,7 @@ export default function PageHome() {
 
 
   return (
-    <div className="p-[27px_24px_98px] flex flex-col items-center font-family-song">
+    <div className="flex flex-col items-center p-[22px_20px_90px] font-family-song">
       <div className="w-[71.7%] flex justify-end">
         <img className="w-[90%]" src={$img('logo')} alt="logo" />
       </div>
@@ -179,10 +179,10 @@ export default function PageHome() {
         track('web.index.create_character.click')
         trackEvent(UmamiEvents.快速生成角色, { source: 'create_button' })
         routerTo("create")
-      })} className='w-full px-[8px] mt-[33px]' src={$img('btn-create-char-new')} alt="create-char" />
+      })} className='mt-[28px] w-full px-[8px]' src={$img('btn-create-char-new')} alt="create-char" />
       {
         isLoggedIn && !!charList.length && (
-          <img className="w-[42%] mt-[14px]" src={$img('btn-reincarnation')} alt="btn-reincarnation" />
+          <img className="mt-[12px] w-[38%]" src={$img('btn-reincarnation')} alt="btn-reincarnation" />
         )
       }
       {
@@ -201,98 +201,82 @@ export default function PageHome() {
           const config = charConfig[attr] || charConfig["土"]
 
           return (
-            <div className='relative w-[87.2%] mt-[24px] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.15)]' key={index}>
-              <div onClick={() => { track('web.index.char_card.click', { character_id: char.id, character_name: charInfo.角色名称 }); handleCharacterSelect(char.id) }} style={{ background: `left -6.65% / 13.3% 11.4% url(${$img('mask-repect')}), ${config.bg1}` }} className="relative overflow-hidden w-full aspect-[1.285]">
-                <div onClick={eventStopPropagation} className='absolute top-[0px] right-[0px] w-[120px] h-[60px]'>
-                  <div className='absolute h-[20px] top-[4px] right-[4px] flex flex-row justify-end gap-[4px]'>
-                    <img onClick={() => checkLoginAndExecute(() => { track('web.index.char_card.share_character.click', { character_id: char.id, character_name: charInfo.角色名称 }); shareCharacter(char.id) })} className='w-[75px] h-[20px]' src={$img('index/btn-share-char')} alt="btn-share" />
-                    <img onClick={(e) => toggleDeleteState(char.id, e)} className='w-[20px] h-[20px]' src={$img('btn-more')} alt="btn-more" />
-                    {
-                      char.willDelete && (
-                        <>
-                          <div className='w-[66px] bg-white rounded-[4px] h-[29px] absolute top-[28px] right-[4px] flex gap-[2px] items-center justify-center'>
-                            <img className='w-[16px] h-[16px]' src={$img('icon-delete')} alt="icon-delete" />
-                          <div className='text-[12px] text-[#B92217] leading-[1] mt-[1px]' onClick={() => { track('web.index.char_card.delete_character.click', { character_id: char.id, character_name: charInfo.角色名称 }); showDeleteConfirm(char.id, charInfo.角色名称) }}>删除</div>
-                          </div>
-                        </>
-                      )
-                    }
-                  </div>
-                </div>
-                <div className="w-2/3 absolute top-[8%] left-[-20%]">
-                  <img className="w-full mix-blend-screen" src={$img('circle')} alt="circle" />
-                  <img className="w-[42%] absolute left-1/2 top-[-20%] -translate-x-1/2 " src={config.url} alt="attr-water" />
-                </div>
-
-                <div className="ml-[calc(50%+2px)] mt-[36px] w-1/2 h-3/4 leading-[1.25] flex flex-col justify-between text-[12px] text-white">
-                  <div>
-                    <div className="flex flex-row items-end text-[#D7C576]">
-                      <div className="text-[24px]">{charInfo.角色名称}</div>
-                      <div className="">「{attr}」</div>
-                    </div>
-                    <div className='mt-[4px]'>
-                      {identity}
-                    </div>
-                    {/* 复活状态提示 */}
-                    {isRevived && (
-                      <div className='mt-[4px] text-[#FFD700] text-[10px]'>
-                        已复活 - 可重新开始
+            <div className='relative mt-[20px] w-[88%] max-w-[380px] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.15)]' key={index}>
+              <div onClick={() => { track('web.index.char_card.click', { character_id: char.id, character_name: charInfo.角色名称 }); handleCharacterSelect(char.id) }} style={{ background: `left -6.65% / 13.3% 11.4% url(${$img('mask-repect')}), ${config.bg1}` }} className="relative overflow-hidden w-full aspect-[1.12]">
+                <div onClick={eventStopPropagation} className='absolute right-[8px] top-[8px] z-20 flex items-start gap-[6px]'>
+                  <img
+                    onClick={() => checkLoginAndExecute(() => { track('web.index.char_card.share_character.click', { character_id: char.id, character_name: charInfo.角色名称 }); shareCharacter(char.id) })}
+                    className='w-[92px] h-auto'
+                    src={$img('index/btn-share-char')}
+                    alt="btn-share"
+                  />
+                  <div className='relative'>
+                    <img onClick={(e) => toggleDeleteState(char.id, e)} className='h-[28px] w-[28px]' src={$img('btn-more')} alt="btn-more" />
+                    {char.willDelete && (
+                      <div className='absolute right-0 top-[34px] flex h-[30px] w-[72px] items-center justify-center gap-[3px] rounded-[6px] bg-white'>
+                        <img className='h-[16px] w-[16px]' src={$img('icon-delete')} alt="icon-delete" />
+                        <div className='mt-[1px] text-[11px] leading-[1] text-[#B92217]' onClick={() => { track('web.index.char_card.delete_character.click', { character_id: char.id, character_name: charInfo.角色名称 }); showDeleteConfirm(char.id, charInfo.角色名称) }}>删除</div>
                       </div>
                     )}
                   </div>
-                  
+                </div>
+
+                <div className="absolute left-[-16%] top-[12px] w-[58%]">
+                  <img className="w-full mix-blend-screen opacity-95" src={$img('circle')} alt="circle" />
+                  <img className="absolute left-1/2 top-[-14%] w-[40%] -translate-x-1/2" src={config.url} alt="attr-water" />
+                </div>
+
+                <div className="absolute bottom-[58px] left-[48%] right-[14px] top-[16px] flex flex-col justify-between text-white">
+                  <div>
+                    <div className="flex items-start justify-between gap-2 text-[#D7C576]">
+                      <div className="min-w-0 text-[18px] leading-[1.05]">{charInfo.角色名称}</div>
+                      <div className="shrink-0 pt-[2px] text-[12px]">「{attr}」</div>
+                    </div>
+                    <div className='mt-[6px] max-h-[3.1em] overflow-hidden text-[11px] leading-[1.55] text-[#F5EADA]'>
+                      {identity}
+                    </div>
+                    {isRevived && (
+                      <div className='mt-[6px] text-[10px] text-[#F0D37C]'>
+                        已复活，可重新开始
+                      </div>
+                    )}
+                  </div>
+
                   {!isRevived && (
-                    <>
-                      <div className='mt-[8px]'>
-                        <div className="flex flex-row gap-[2px] items-end">
-                          <div>突破率</div>
-                          <div className='origin-bottom-left scale-75 mb-[1px]'>/Upgrade rate</div>
-                        </div>
-                        <div className="flex flex-row items-end text-[16px] pl-[12px]">
-                          <div className="text-[#D7C576]">{Math.round(charStatus.突破成功系数 * 100)}%</div>
-                          {/* <div>/100%</div> */}
-                        </div>
+                    <div className="grid grid-cols-3 gap-[6px] text-[#F2E8D8]">
+                      <div className="rounded-[12px] bg-[rgba(17,12,8,0.22)] px-[8px] py-[8px]">
+                        <div className="text-[10px] leading-none text-[#E8DCC7]">突破率</div>
+                        <div className="mt-[6px] text-[15px] leading-none text-[#D7C576]">{Math.round(charStatus.突破成功系数 * 100)}%</div>
                       </div>
-
-                      <div className='mt-[8px]'>
-                        <div className="flex flex-row gap-[2px] items-end">
-                          <div>修为</div>
-                          <div className='origin-bottom-left scale-75 mb-[1px]'>/Level</div>
-                        </div>
-                        <div className="text-[#D7C576] text-[16px] pl-[12px]">{charStatus?.等级}</div>
+                      <div className="rounded-[12px] bg-[rgba(17,12,8,0.22)] px-[8px] py-[8px]">
+                        <div className="text-[10px] leading-none text-[#E8DCC7]">修为</div>
+                        <div className="mt-[6px] text-[15px] leading-none text-[#D7C576]">{charStatus?.等级}</div>
                       </div>
-
-                      <div className='mt-[8px]'>
-                        <div className="flex flex-row gap-[2px] items-end">
-                          <div>道心</div>
-                          <div className='origin-bottom-left scale-75 mb-[1px]'>/Rationality</div>
-                        </div>
-                        <div className="flex flex-row items-end text-[16px] pl-[12px]">
-                          <div className="text-[#D7C576]">{charStatus?.道心}</div>
-                          <div>/3</div>
-                        </div>
+                      <div className="rounded-[12px] bg-[rgba(17,12,8,0.22)] px-[8px] py-[8px]">
+                        <div className="text-[10px] leading-none text-[#E8DCC7]">道心</div>
+                        <div className="mt-[6px] text-[15px] leading-none text-[#D7C576]">{charStatus?.道心}<span className="text-[10px] text-[#E8DCC7]">/3</span></div>
                       </div>
-                    </>
+                    </div>
                   )}
                 </div>
               </div>
-              <div className='w-full h-[48px] left-0 bottom-0 flex justify-end items-center gap-[16px]' style={{ background: config.bg1 }}>
+              <div className='flex h-[52px] w-full items-center justify-between gap-[10px] px-[10px]' style={{ background: config.bg1 }}>
                 <img onClick={() => checkLoginAndExecute(() => {
                   track('web.index.char_card.history_record.click', { character_id: char.id })
                   trackEvent(UmamiEvents.首页历史按钮, { character_id: char.id })
                   handleCharacterSelect(char.id);
                   router.push("/pages/history")
-                })} className='w-[44%]' src={$img('index/btn-history')} alt="btn-history" />
+                })} className='w-[46%] max-w-[150px]' src={$img('index/btn-history')} alt="btn-history" />
                 <img onClick={() => {
                   if (isRevived) {
                     // 复活后的角色，直接开始新游戏
                     checkLoginAndExecute(() => { track('web.index.char_card.continue_story.click', { character_id: char.id }); toCharPage(char.id, true) });
-                  } else {
+                  } else if (!charStatus.是否死亡) {
                     // 正常角色，检查是否死亡
-                    charStatus.是否死亡 || checkLoginAndExecute(() => { track('web.index.char_card.continue_story.click', { character_id: char.id }); toCharPage(char.id, true) });
+                    checkLoginAndExecute(() => { track('web.index.char_card.continue_story.click', { character_id: char.id }); toCharPage(char.id, true) });
                   }
                 }}
-                  className={`w-[44%]`} src={
+                  className='w-[46%] max-w-[150px]' src={
                     isRevived ? $img('btn-text-continue') : 
                     charStatus?.是否死亡 ? $img('btn-disable-die-continue') : $img('btn-text-continue')
                   } alt="" />

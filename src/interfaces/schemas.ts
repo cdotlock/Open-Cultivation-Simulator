@@ -16,6 +16,11 @@ export const CharacterDescriptionSchema = z.object({
     人物背景: z.string(),
     外貌特征: z.string(),
     灵根属性: z.string(),
+    所属帮派: z.string().optional(),
+    帮派身份: z.string().optional(),
+    帮派地位: z.string().optional(),
+    帮派当前目标: z.string().optional(),
+    帮派对主角的期待: z.string().optional(),
     初始属性: z.object({
         灵根: z.enum(elements),
         等级: z.enum(cultivationLevels)

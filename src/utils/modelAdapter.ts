@@ -1,5 +1,29 @@
-import { createOpenAI } from '@ai-sdk/openai';
-import { AIModel } from '@/lib/local-config/types';
+import { createOpenAI } from "@ai-sdk/openai";
+import type { AIConfig, AIModel } from "@/lib/local-config/types";
+
+type ProviderParams = {
+  temperature?: number;
+  max_tokens?: number;
+  top_p?: number;
+};
+
+type ProviderConfig = Pick<AIConfig, "thinking" | "params"> | {
+  thinking?: boolean;
+  params?: ProviderParams;
+};
+
+type ProviderOptionEntry = {
+  temperature: number;
+  max_tokens: number;
+  top_p: number;
+  enable_thinking?: boolean;
+  enable_search?: boolean;
+};
+
+type ProviderOptions = {
+  qwen?: ProviderOptionEntry;
+  openai?: ProviderOptionEntry;
+};
 
 function normalizeBaseUrl(model: AIModel) {
   const raw = model.apiUrl.replace(/\/$/, "");
@@ -52,34 +76,34 @@ export function createModelFromConfig(model: AIModel) {
 /**
  * 根据模型类型获取对应的provider选项
  */
-export function getProviderOptions(model: AIModel, config: any) {
+export function getProviderOptions(model: AIModel, config: ProviderConfig): ProviderOptions {
   const modelName = model.name.toLowerCase();
+  const params = config.params ?? {};
+  const baseOptions = {
+    temperature: typeof params.temperature === "number" ? params.temperature : 0.7,
+    max_tokens: typeof params.max_tokens === "number" ? params.max_tokens : 1000,
+    top_p: typeof params.top_p === "number" ? params.top_p : 0.9,
+  };
   
   if (modelName.includes('qwen') || model.apiUrl.includes('dashscope') || model.apiUrl.includes('aliyun')) {
     return {
       qwen: {
+        ...baseOptions,
         enable_thinking: config.thinking || false,
-        temperature: config.params?.temperature || 0.7,
-        max_tokens: config.params?.max_tokens || 1000,
-        top_p: config.params?.top_p || 0.9,
       }
-    } as any;
+    };
   } else if (modelName.includes('zhipu') || model.apiUrl.includes('zhipu') || model.apiUrl.includes('api.zhipu.ai')) {
     return {
       openai: {
+        ...baseOptions,
         enable_search: config.thinking || false,
-        temperature: config.params?.temperature || 0.7,
-        max_tokens: config.params?.max_tokens || 1000,
-        top_p: config.params?.top_p || 0.9,
       }
-    } as any;
+    };
   } else {
     return {
       openai: {
-        temperature: config.params?.temperature || 0.7,
-        max_tokens: config.params?.max_tokens || 1000,
-        top_p: config.params?.top_p || 0.9,
+        ...baseOptions,
       }
-    } as any;
+    };
   }
 } 

@@ -1,5 +1,5 @@
 import { Character, GamePush } from "@/app/actions/generated/prisma";
-import { CharacterStatusType, StoryPushType, difficultyLevels, CharacterStatusSchema, storyPushSchema } from "@/interfaces/schemas";
+import { CharacterStatusType, StoryPushType, difficultyLevels, CharacterStatusSchema, storyPushSchema, GameOptionType } from "@/interfaces/schemas";
 import { StatusDelta } from "@/interfaces/dto";
 import { formatStatusForLLM, formatStatusWithMax } from "../character/constants";
 import { changeAttr, calculateStatusDelta } from "./attributeSystem";
@@ -17,6 +17,11 @@ import MemoryRules from "@/config/MemoryRules";
 import eventBus from "@/utils/eventBus";
 import { PreloadService, OptionWithPreroll } from "./PreloadService";
 import { OptionService } from "./OptionService";
+import {
+  getFactionNarrativeContext,
+  maybeAdvanceFactionWorldTurn,
+  recordFactionActionOutcome,
+} from "./factionSystem";
 
 export class GamePushService {
     private preloadService: PreloadService;
@@ -34,7 +39,8 @@ export class GamePushService {
         baseStatus: CharacterStatusType,
         characterDescription: Record<string, unknown>,
         choice?: string,
-        success?: boolean
+        success?: boolean,
+        factionContext?: Record<string, string>
     ) {
         const { 初始属性, ...restDescription } = characterDescription;
 
@@ -68,7 +74,13 @@ export class GamePushService {
 
         const variables: Record<string, string> = {
             CHARACTER_DESCRIPTION: JSON.stringify(restDescription),
-            DYNAMIC_INPUT: processedDynamicInput
+            DYNAMIC_INPUT: processedDynamicInput,
+            WORLD_STATE_SUMMARY: factionContext?.WORLD_STATE_SUMMARY || "天下局势暂时平稳。",
+            CURRENT_REGION: factionContext?.CURRENT_REGION || "行踪未定。",
+            PLAYER_FACTION_STATUS: factionContext?.PLAYER_FACTION_STATUS || "暂无帮派身份。",
+            FACTION_RELATIONS: factionContext?.FACTION_RELATIONS || "暂无显著势力关系。",
+            RECENT_WORLD_EVENTS: factionContext?.RECENT_WORLD_EVENTS || "最近天下无足以左右剧情的大事。",
+            ACTIVE_FACTION_MISSIONS: factionContext?.ACTIVE_FACTION_MISSIONS || "暂无帮派任务。",
         };
 
         let systemPrompt = config.systemPrompt || '';
@@ -78,6 +90,33 @@ export class GamePushService {
             systemPrompt = systemPrompt.replace(new RegExp(`\\{${key}\\}`, 'g'), variables[key]);
             userPrompt = userPrompt.replace(new RegExp(`\\{${key}\\}`, 'g'), variables[key]);
         });
+
+        if (factionContext) {
+            const factionPromptSection = [
+                "## 帮派世界上下文",
+                `世界摘要：${variables.WORLD_STATE_SUMMARY}`,
+                `当前区域：${variables.CURRENT_REGION}`,
+                `玩家帮派状态：${variables.PLAYER_FACTION_STATUS}`,
+                `帮派关系：${variables.FACTION_RELATIONS}`,
+                `最近世界事件：${variables.RECENT_WORLD_EVENTS}`,
+                `当前帮派任务：${variables.ACTIVE_FACTION_MISSIONS}`,
+            ].join("\n");
+
+            if (!userPrompt.includes("帮派世界上下文")) {
+                userPrompt += `\n\n${factionPromptSection}`;
+            }
+
+            const revealRule = [
+                "## 帮派呈现规则",
+                "不要把帮派关系分数、完整计划、隐藏数值、系统机制直接讲给玩家听。",
+                "只通过门中口风、任务措辞、人物态度、边境变化、流言、书信、见闻来侧写局势。",
+                "允许信息不完整、互相矛盾、带偏差，让玩家自己判断和博弈。",
+            ].join("\n");
+
+            if (!userPrompt.includes("帮派呈现规则")) {
+                userPrompt += `\n\n${revealRule}`;
+            }
+        }
 
         const turnCount = this.calculateTurnCount(baseStatus);
         const extendedMemory = extendMemory(turnCount, MemoryRules);
@@ -133,12 +172,16 @@ export class GamePushService {
 
     async startGame(character: Character, currentStatus: CharacterStatusType): Promise<{ push: GamePush; delta: StatusDelta }> {
         const dynamicInput = `当前角色状态: ${formatStatusForLLM(currentStatus)}`;
+        const factionContext = await getFactionNarrativeContext(character.id);
         const result = await this.createGamePush(
             character.id,
             character.currentPushId!,
             dynamicInput,
             currentStatus,
-            character.description as Record<string, unknown> || {}
+            character.description as Record<string, unknown> || {},
+            undefined,
+            undefined,
+            factionContext
         );
 
         result.push = await this.preloadService.addPrerollToGamePush(
@@ -153,9 +196,18 @@ export class GamePushService {
         character: Character,
         currentStatus: CharacterStatusType,
         choice: string,
-        success: boolean
+        success: boolean,
+        selectedOption?: Pick<GameOptionType, "选项类别" | "选项难度">
     ): Promise<{ push: GamePush; delta: StatusDelta }> {
+        if (selectedOption) {
+            await recordFactionActionOutcome(character.id, selectedOption, success);
+        }
+
+        const nextPlayerTurn = this.calculateTurnCount(currentStatus) + 1;
+        await maybeAdvanceFactionWorldTurn(character.id, nextPlayerTurn);
+
         const gameContext = await compressMemoryIfNeeded(character.id);
+        const factionContext = await getFactionNarrativeContext(character.id);
         const dynamicInput = `
         当前角色状态: ${formatStatusForLLM(currentStatus)}
         ${gameContext}
@@ -168,7 +220,8 @@ export class GamePushService {
             currentStatus,
             character.description as Record<string, unknown> || {},
             choice,
-            success
+            success,
+            factionContext
         );
 
         result.push = await this.preloadService.addPrerollToGamePush(

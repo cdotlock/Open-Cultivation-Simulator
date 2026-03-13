@@ -27,7 +27,7 @@
 @theme {
   --animate-fade-in: fade-in 0.3s ease-out;
   --animate-fade-out: fade-out 0.3s ease-in both;
-  --font-family-song: "Huiwen-mincho", "Source Han Serif CN for Display", sans-serif;
+  --font-family-song: "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif CJK SC", "Noto Serif SC", "SimSun", serif;
   
   @keyframes fade-in {
     0% {
@@ -48,9 +48,17 @@
   }
 }
 
+html {
+  font-size: 14px;
+  background: #f2ebd9;
+}
 
 body {
-  font-family: "Huiwen-mincho", "Source Han Serif CN for Display", sans-serif;
+  background: #f2ebd9;
+  color: #2a2116;
+  font-family: "Songti SC", "STSong", "Source Han Serif SC", "Noto Serif CJK SC", "Noto Serif SC", "SimSun", serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 button,

@@ -12,6 +12,7 @@ import { handleCharacterDeath } from "./death";
 import { GamePushService } from "./GamePushService";
 import { OptionService } from "./OptionService";
 import { OptionWithPreroll } from "./PreloadService";
+import { getFactionUiData } from "./factionSystem";
 
 export class GameCharacterRefactored {
     character: Character;
@@ -127,6 +128,7 @@ export class GameCharacterRefactored {
             this.asyncPreloadNext(this.character, this.currentPush, this.currentStatus);
 
             const startGameCheckResult = this.optionService.createDefaultCheckResult();
+            const factionData = await getFactionUiData(this.id);
 
             return {
                 id: this.currentPush.id,
@@ -134,7 +136,8 @@ export class GameCharacterRefactored {
                 newStatus: formatStatusWithMax(parsedStatus),
                 statusDelta: delta,
                 deathJudgement,
-                checkResult: startGameCheckResult
+                checkResult: startGameCheckResult,
+                factionData
             };
         } catch (error) {
             await handleActionError(
@@ -194,7 +197,11 @@ export class GameCharacterRefactored {
                         this.character,
                         this.currentStatus,
                         choice,
-                        preAnalyzedOption!.是否成功 as boolean
+                        preAnalyzedOption!.是否成功 as boolean,
+                        {
+                            选项类别: actionType,
+                            选项难度: difficulty,
+                        }
                     );
                     gamePush = result.push;
                 } else {
@@ -217,7 +224,11 @@ export class GameCharacterRefactored {
                         this.character,
                         this.currentStatus,
                         choice,
-                        checkResult.success
+                        checkResult.success,
+                        {
+                            选项类别: actionType,
+                            选项难度: difficulty,
+                        }
                     );
                     gamePush = result.push;
                 }
@@ -271,6 +282,7 @@ export class GameCharacterRefactored {
         
         const currentStatusSnapshot = this.currentStatus;
         const statusDelta = calculateStatusDelta(this.cloneStatus, currentStatusSnapshot);
+        const factionData = await getFactionUiData(this.id);
 
         let response: GamePushResponse;
 
@@ -285,7 +297,8 @@ export class GameCharacterRefactored {
                 checkResult: {
                     success: selectedOption.是否成功 ?? false,
                     diceValues: selectedOption.骰子 ?? [1, 1]
-                }
+                },
+                factionData
             };
         } else {
             response = {
@@ -297,7 +310,8 @@ export class GameCharacterRefactored {
                 checkResult: {
                     success: selectedOption.是否成功 ?? false,
                     diceValues: selectedOption.骰子 ?? [1, 1]
-                }
+                },
+                factionData
             };
         }
 

@@ -16,7 +16,12 @@
 
 `创建角色 -> 进入剧情 -> 选择行动 -> 掷骰检定 -> 推进故事 -> 死亡/复生/突破`
 
-当前界面已同时适配桌面端与移动端，尽量保留原始贴图、按钮和宣纸式视觉风格。
+当前界面已同时适配桌面端与移动端：
+
+- 手机端直接进入游戏
+- 桌面端会按当前视口自动缩放并居中展示主界面，保证一屏完整可见
+
+整体尽量保留原始贴图、按钮和宣纸式视觉风格。
 
 ## 快速开始
 
@@ -27,7 +32,7 @@ pnpm bootstrap
 pnpm dev
 ```
 
-打开 [http://127.0.0.1:3009](http://127.0.0.1:3009)。
+打开 [http://localhost:3009](http://localhost:3009)。
 
 ## 一键启动
 
@@ -101,7 +106,7 @@ pnpm bootstrap
 
 ## MCP / Skills / OpenClaw
 
-- MCP 入口：`http://127.0.0.1:3009/mcp`
+- MCP 入口：`http://localhost:3009/mcp`
 - Skills 目录：`skills/`
 - OpenClaw 示例配置：`openclaw/example-config.json`
 

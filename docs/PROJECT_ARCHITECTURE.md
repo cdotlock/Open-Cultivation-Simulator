@@ -1,7 +1,7 @@
 # MOB.AI 项目架构档案
 
-> 2026-03-11 更新：
-> 当前仓库已经完成 Phase 1 的开源单机化落地。运行时事实已经从“PostgreSQL + Redis + 远程配置 + 远程静态资源 + 支付/登录分支”切换到“SQLite + 本地配置 + 本地资源 + 单机默认用户 + `/mcp`”。
+> 2026-03-12 更新：
+> 当前仓库已经完成 Phase 1 的开源单机化落地，并落地 Phase 2 的 faction/world 系统。运行时事实已经从“PostgreSQL + Redis + 远程配置 + 远程静态资源 + 支付/登录分支”切换到“SQLite + 本地配置 + 本地资源 + 单机默认用户 + `/mcp` + 帮派外循环世界模拟”。
 
 ## 1. 当前定位
 
@@ -11,7 +11,7 @@ MOB.AI 当前是一个以修仙题材为核心的 AI 驱动叙事游戏仓库。
 - 本地配置和持久化驱动的服务端动作
 - 对外暴露给 agent 的 MCP / skills 接口
 
-这份文档记录的是“当前事实架构”，作为后续 faction/world 重构的基线。
+这份文档记录的是“当前事实架构”，用于后续继续迭代 faction/world 层。
 
 ## 2. 技术栈与运行时
 
@@ -74,16 +74,18 @@ MOB.AI 当前是一个以修仙题材为核心的 AI 驱动叙事游戏仓库。
 - `src/app/components/PageStory.tsx`
   - 剧情展示、掷骰演出、选项推进、自定义输入、死亡/突破跳转。
 - `src/app/pages/*`
-  - 独立路由页，目前保留历史、设置、死亡、头像等页面。
+  - 独立路由页，目前保留历史、设置、死亡、头像、世界地图等页面。
 
 ### 4.3 服务端动作层
 
 `src/app/actions/**` 是当前应用真正的后端接口层，核心包括：
 
 - `character/action.ts`
-  - 创建角色、获取角色、突破、复生。
+  - 创建角色、获取角色、突破、复生，并在角色创建/读取时注入 faction 数据。
 - `game/action.ts`
   - `startGame()`、`pushGame()`。
+- `faction/action.ts`
+  - 读取角色对应的 faction 世界快照。
 - `settings/action.ts`
   - 本地模型配置、Prompt 模板、功能开关、连接测试。
 - `revive/action.ts`
@@ -100,11 +102,13 @@ MOB.AI 当前是一个以修仙题材为核心的 AI 驱动叙事游戏仓库。
 - `GameCharacterRefactored.ts`
   - 主协调器，负责角色装载、推进、突破/死亡判定、current push 切换。
 - `GamePushService.ts`
-  - 创建剧情推进、调用 LLM、落库新 push。
+  - 创建剧情推进、调用 LLM、落库新 push，并把 faction 世界上下文注入故事 Prompt。
 - `OptionService.ts`
   - 选项推进与预加载衔接。
 - `PreloadService.ts`
   - 给选项提前掷骰并准备结果。
+- `factionSystem.ts`
+  - 负责世界生成、帮派关系、地图节点、帮派任务、外循环 world turn、旧存档补建与 UI payload 组装。
 - `checkSystem.ts`
   - 2d6 检定规则。
 - `attributeSystem.ts`
@@ -125,7 +129,7 @@ MOB.AI 当前是一个以修仙题材为核心的 AI 驱动叙事游戏仓库。
 - `src/lib/local-media.ts`
   - 本地图像落盘。
 - `src/lib/mcp/server.ts`
-  - MCP server 定义。
+  - MCP server 定义，并暴露 faction 设计/roadmap 等资源。
 - `src/utils/modelAdapter.ts`
   - 把本地配置映射到 AI SDK provider。
 - `src/utils/stableGenerateObject.ts`
@@ -155,7 +159,24 @@ flowchart TD
 - 主游戏循环使用 Recoil `pageState`
 - 历史、死亡、设置、头像使用 App Router 独立页面
 
-这意味着后续 faction 地图接入时，需要决定它是进入主状态机，还是成为独立页面。
+当前 faction 地图已经采用独立页面 `src/app/pages/world/page.tsx`，并在角色页、故事页通过入口按钮跳转。
+
+### 5.3 帮派外循环
+
+```mermaid
+flowchart TD
+  A["创建角色"] --> B["生成 faction world 草图"]
+  B --> C["持久化 World / Faction / MapNode / Relation"]
+  C --> D["分配玩家帮派身份与初始任务"]
+  D --> E["开始剧情"]
+  E --> F["玩家推进一次剧情"]
+  F --> G["更新帮派任务进度与贡献/信任"]
+  G --> H{"是否达到 world turn 间隔"}
+  H -->|是| I["运行帮派意图与战争/联盟结算"]
+  H -->|否| J["继续剧情"]
+  I --> K["写入 WorldEvent 与新闻摘要"]
+  K --> J
+```
 
 ## 6. 数据模型
 
@@ -165,6 +186,13 @@ flowchart TD
 | --- | --- |
 | `User` | 本地单用户主体，含复生状态 |
 | `Character` | 角色档案、加点、灵根、当前推进指针 |
+| `World` | 帮派世界种子、world turn、季节、新闻摘要 |
+| `MapNode` | 世界节点图上的山门、坊市、渡口、秘境等 |
+| `Faction` | 帮派势力、目标、首府、控制节点与风格摘要 |
+| `FactionRelation` | 势力间关系分数、关系类型、最近原因 |
+| `CharacterFactionState` | 玩家在帮派中的身份、贡献、信任、地位、当前节点 |
+| `FactionMission` | 帮派派给玩家的任务与奖励 |
+| `WorldEvent` | 战争、结盟、占领、任务完成等世界事件 |
 | `GamePush` | 每一步剧情推进节点 |
 | `StorySegment` | 与推进一对一的剧情片段快照 |
 | `Avatar` / `AvatarTask` | 角色头像与生成任务 |
@@ -175,9 +203,12 @@ flowchart TD
 ### 6.2 当前关系重点
 
 - `Character.currentPushId` 指向当前剧情节点
+- `Character.worldId` 把角色接到 faction/world 层
 - `Character.gamePush[]` 保存推进历史
+- `Character.factionState` 维护帮派身份、贡献、当前任务
 - `GamePush.fatherId` 形成推进树
 - `StorySegment` 与 `GamePush` 一对一
+- `World -> Faction -> MapNode / FactionRelation / WorldEvent` 组成世界外循环骨架
 - 复生不重建角色，而是重置状态并继续角色生命线
 
 ## 7. 配置与模型链路
@@ -208,7 +239,7 @@ flowchart TD
 当前暴露：
 
 - tools：角色查询、角色创建、开始游戏、推进、突破、设置读取
-- resources：架构文档、规则文档、roadmap、skills、Prompt 模板
+- resources：架构文档、规则文档、roadmap、faction 设计文档、skills、Prompt 模板
 - prompts：重构顾问、游戏主持
 
 ### 8.2 Skills
@@ -236,13 +267,13 @@ flowchart TD
 - 移动端全屏叙事感
 - 五行色系和金色点缀
 
-换句话说，Phase 2 即使加入 faction/map，也不能把界面做成普通管理后台或标准沙盒地图。
+换句话说，Phase 2 的 faction/map 已经按这个方向落地，不能退化成普通管理后台或标准沙盒地图。
 
 ## 10. 当前重构热点
 
 ### 10.1 导航双轨制
 
-主循环与独立路由页并存，后续 faction/map 接入时要先决定导航归属。
+主循环与独立路由页并存。当前 faction/map 已经进入独立路由页，但与 Recoil 主循环仍有状态桥接成本。
 
 ### 10.2 领域与持久化强耦合
 
@@ -256,7 +287,11 @@ cookie、`localStorage`、Recoil 同时存在，SSR/CSR 一致性仍有维护成
 
 代码已经摆脱远端 config service，但 `ConfigService` 语义仍在。后续可以考虑彻底改成显式本地配置仓储。
 
-### 10.5 文档与代码要持续对齐
+### 10.5 帮派世界仍以代码模拟为主
+
+当前帮派 AI 采用“代码掌控状态，LLM 负责叙事上下文”的混合模式。后续如果要继续增强自治深度，应保持这个边界，不要把可验证规则重新交还给模型。
+
+### 10.6 文档与代码要持续对齐
 
 旧支付/后台文档已经不再代表当前产品，后续开发应以 `README.md`、`docs/ROADMAP.md`、当前源码为准。
 

@@ -6,8 +6,14 @@ import { GameStatus } from './const';
 export * from './const';
 export * from './schemas';
 export * from './dto';
+export * from './faction';
 
 export type CharacterDescriptionType = {
+  所属帮派?: string;
+  帮派身份?: string;
+  帮派地位?: string;
+  帮派当前目标?: string;
+  帮派对主角的期待?: string;
   人物关系: string[];
   人物背景: string;
   初始属性: {
@@ -37,6 +43,7 @@ export type BaseGamePush = Omit<GamePush, 'info' | 'status'> & {
 // API 响应类型
 export type CharacterWithGamePush = BaseCharacter & {
   currentPush: BaseGamePush | null;
+  factionData?: import('./faction').FactionUiPayload;
 };
 
 export type CharacterWithGamePushList = {

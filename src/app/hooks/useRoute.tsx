@@ -32,7 +32,7 @@ const useRoute = () => {
     setPage(path);
     // 跳转后滚动到页面顶部
     window.scrollTo(0, 0);
-  }, [page, setPage]);
+  }, [page, pathname, router, setPage]);
 
   const routerBack = useCallback(() => {
     // 获取存储的路径数组

@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { useRecoilState } from "recoil";
 import { characterState } from "@/app/store";
-import useRoute from "@/app/hooks/useRoute";
 import Image from "next/image";
 import { $img } from "@/utils";
 import { useLogin } from "@/app/hooks/useLogin";
@@ -16,7 +15,7 @@ import { formatStatusWithMax } from "@/app/actions/character/constants";
 import { CharacterWithGamePush } from "@/interfaces";
 import { StoryPushType } from "@/interfaces/schemas";
 
-const extractGameInfo = (gamePush?: { info: any; choice?: string }): {
+const extractGameInfo = (gamePush?: { info: unknown; choice?: string }): {
   playerChoice?: string;
   currentObjective?: string;
   storyline?: string;
@@ -44,7 +43,7 @@ interface StorySegment {
   createdAt: Date;
   updatedAt: Date;
   gamePush?: {
-    info: any;
+    info: unknown;
     choice?: string;
   };
 }

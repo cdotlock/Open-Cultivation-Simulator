@@ -15,6 +15,13 @@ import { ConfigService } from "@/utils/config-client";
 import { createModelFromConfig, getProviderOptions } from "@/utils/modelAdapter";
 import { prisma } from '@/lib/prisma';
 import { generateDefaultCharacterAvatar } from "../character_avatar/action";
+import {
+  createCharacterFactionSetup,
+  getFactionPromptVariables,
+  getFactionUiData,
+  persistPreparedFactionWorld,
+  prepareFactionWorldDraft,
+} from "../module/factionSystem";
 
 
 /**
@@ -33,6 +40,13 @@ export async function createCharacter(
   spiritRoot?: string
 ): Promise<CharacterWithGamePush> {
   try {
+    const factionDraft = prepareFactionWorldDraft({
+      name,
+      userInput,
+      spiritRoot,
+    });
+    const factionVariables = getFactionPromptVariables(factionDraft);
+
     // 构建用户输入，包含灵根信息
     let USER_INPUT = "为" + userInput + "撰写角色档案和故事梗概，不论你让ta当主角配角，都要让ta活得精彩。"
     
@@ -55,7 +69,10 @@ export async function createCharacter(
 
     // 构建变量对象
     const variables: Record<string, string> = {
-      USER_INPUT: USER_INPUT
+      USER_INPUT: USER_INPUT,
+      FACTION_PROFILE: factionVariables.FACTION_PROFILE,
+      FACTION_ROLE: factionVariables.FACTION_ROLE,
+      FACTION_GOAL: factionVariables.FACTION_GOAL,
     };
     
     // 渲染系统提示词（替换插值表达式）
@@ -69,6 +86,16 @@ export async function createCharacter(
     Object.keys(variables).forEach(key => {
       userPrompt = userPrompt.replace(new RegExp(`\\{${key}\\}`, 'g'), variables[key]);
     });
+
+    if (!systemPrompt.includes(factionVariables.FACTION_PROFILE)) {
+      systemPrompt += `\n\n## 帮派世界上下文\n所属帮派概况：${factionVariables.FACTION_PROFILE}\n玩家在帮中的身份：${factionVariables.FACTION_ROLE}\n帮派当前目标：${factionVariables.FACTION_GOAL}`;
+    }
+
+    if (!userPrompt.includes(factionVariables.FACTION_PROFILE)) {
+      userPrompt += `\n\n### 帮派补充设定\n- 帮派概况：${factionVariables.FACTION_PROFILE}\n- 玩家身份：${factionVariables.FACTION_ROLE}\n- 帮派目标：${factionVariables.FACTION_GOAL}`;
+    }
+
+    userPrompt += `\n\n### 额外输出要求\n请在角色 JSON 中补充以下字段：所属帮派、帮派身份、帮派地位、帮派当前目标、帮派对主角的期待。内容必须与上述帮派设定一致。`;
 
     // 根据配置创建模型实例
     const modelInstance = createModelFromConfig(config.model);
@@ -87,15 +114,17 @@ export async function createCharacter(
     });
 
     // 使用事务创建角色和初始推进
-    const character = await dbOperations.transaction(async () => {
-      // 创建主角色
-      const mainCharacter = await prisma.character.create({
+    const character = await prisma.$transaction(async (tx) => {
+      const persistedWorld = await persistPreparedFactionWorld(tx, factionDraft);
+
+      const mainCharacter = await tx.character.create({
         data: {
           userUuid,
           name,
           description: object,
           cover: "", // 临时设置为空，将在头像生成后更新
           createPrompt: userPrompt,
+          worldId: persistedWorld.worldId,
           // 加点属性
           charmPoints: attributePoints?.魅力 || 0,
           spiritPoints: attributePoints?.神识 || 0,
@@ -118,7 +147,7 @@ export async function createCharacter(
       });
 
       // 更新角色的当前推进ID
-      await prisma.character.update({
+      const updatedCharacter = await tx.character.update({
         where: { id: mainCharacter.id },
         data: {
           sharedFromCharacterId: mainCharacter.id,
@@ -126,12 +155,17 @@ export async function createCharacter(
         }
       });
 
+      await createCharacterFactionSetup(tx, factionDraft, persistedWorld, mainCharacter.id);
+
+      const factionData = await getFactionUiData(mainCharacter.id, tx);
+
       return {
-        ...mainCharacter,
-        description: mainCharacter.description as CharacterDescriptionType,
+        ...updatedCharacter,
+        description: updatedCharacter.description as CharacterDescriptionType,
         sharedFromCharacterId: mainCharacter.id,
         currentPushId: mainCharacter.gamePush[0].id,
-        currentPush: mainCharacter.gamePush[0] as BaseGamePush
+        currentPush: mainCharacter.gamePush[0] as BaseGamePush,
+        factionData
       };
     });
 
@@ -178,6 +212,13 @@ export async function cloneSharedCharacter(characterId: number, newPlayerUUID: s
     where: {
       id: characterId,
       isDeleted: false
+    },
+    include: {
+      factionState: {
+        include: {
+          activeMission: true
+        }
+      }
     }
   });
 
@@ -209,6 +250,7 @@ export async function cloneSharedCharacter(characterId: number, newPlayerUUID: s
         createPrompt: sharedCharacter.createPrompt,
         cover: sharedCharacter.cover,
         description: sharedCharacter.description as InputJsonValue,
+        worldId: sharedCharacter.worldId,
         // 继承原始角色的加点属性
         charmPoints: sharedCharacter.charmPoints,
         spiritPoints: sharedCharacter.spiritPoints,
@@ -240,10 +282,57 @@ export async function cloneSharedCharacter(characterId: number, newPlayerUUID: s
       }
     });
 
+    if (sharedCharacter.factionState) {
+      const state = await prisma.characterFactionState.create({
+        data: {
+          characterId: mainCharacter.id,
+          factionId: sharedCharacter.factionState.factionId,
+          currentNodeId: sharedCharacter.factionState.currentNodeId,
+          rank: sharedCharacter.factionState.rank,
+          contribution: sharedCharacter.factionState.contribution,
+          trust: sharedCharacter.factionState.trust,
+          militaryCredit: sharedCharacter.factionState.militaryCredit,
+          politicalStanding: sharedCharacter.factionState.politicalStanding,
+          factionGoalProgress: sharedCharacter.factionState.factionGoalProgress,
+          factionRole: sharedCharacter.factionState.factionRole,
+          factionExpectation: sharedCharacter.factionState.factionExpectation,
+        }
+      });
+
+      if (sharedCharacter.factionState.activeMission && sharedCharacter.worldId) {
+        const copiedMission = await prisma.factionMission.create({
+          data: {
+            worldId: sharedCharacter.worldId,
+            factionId: sharedCharacter.factionState.factionId,
+            characterId: mainCharacter.id,
+            targetNodeId: sharedCharacter.factionState.activeMission.targetNodeId,
+            title: sharedCharacter.factionState.activeMission.title,
+            category: sharedCharacter.factionState.activeMission.category,
+            description: sharedCharacter.factionState.activeMission.description,
+            status: "ACTIVE",
+            progress: 0,
+            goal: sharedCharacter.factionState.activeMission.goal,
+            rewardContribution: sharedCharacter.factionState.activeMission.rewardContribution,
+            rewardTrust: sharedCharacter.factionState.activeMission.rewardTrust,
+            rewardMilitaryCredit: sharedCharacter.factionState.activeMission.rewardMilitaryCredit,
+            rewardPoliticalStanding: sharedCharacter.factionState.activeMission.rewardPoliticalStanding,
+          }
+        });
+
+        await prisma.characterFactionState.update({
+          where: { id: state.id },
+          data: { activeMissionId: copiedMission.id }
+        });
+      }
+    }
+
+    const factionData = await getFactionUiData(mainCharacter.id);
+
     return {
       ...updatedCharacter,
       description: updatedCharacter.description as CharacterDescriptionType,
-      currentPush: mainCharacter.gamePush[0] as BaseGamePush
+      currentPush: mainCharacter.gamePush[0] as BaseGamePush,
+      factionData
     };
   });
 
@@ -556,10 +645,12 @@ export async function getCharacterById(id: number): Promise<CharacterWithGamePus
 
   // 检查角色是否有currentPushId，如果没有说明是复活后的角色
   if (!character.currentPushId) {
+    const factionData = await getFactionUiData(id);
     return {
       ...character,
       description: character.description as CharacterDescriptionType,
-      currentPush: null
+      currentPush: null,
+      factionData
     }
   }
 
@@ -571,6 +662,8 @@ export async function getCharacterById(id: number): Promise<CharacterWithGamePus
     throw new Error("推进记录不存在");
   }
 
+  const factionData = await getFactionUiData(id);
+
   return {
     ...character,
     description: character.description as CharacterDescriptionType,
@@ -578,7 +671,8 @@ export async function getCharacterById(id: number): Promise<CharacterWithGamePus
       ...currentPush,
       info: currentPush.info || {},
       status: currentPush.status || {}
-    } as BaseGamePush
+    } as BaseGamePush,
+    factionData
   }
 }
 

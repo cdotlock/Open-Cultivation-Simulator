@@ -1,4 +1,5 @@
 import { CharacterDescriptionType, CharacterStatusType, StoryPushType, difficultyLevels, GameOptionType } from './schemas';
+import { FactionUiPayload } from './faction';
 import { formatStatusWithMax } from '@/app/actions/character/constants';
 
 export type BaseResponse<T> = {
@@ -49,6 +50,7 @@ export type GamePushResponse = {
         imageUrl?: string;
         error?: string;
     };
+    factionData?: FactionUiPayload;
 };
 
 export type PreAnalyzedOptionPayload = Pick<GameOptionType, '选项类别' | '选项难度'> & Partial<Pick<GameOptionType, '是否成功' | '骰子' | '成功率' | '基础DC' | '修正值' | '变动原因'>>;

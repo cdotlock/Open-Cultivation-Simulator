@@ -193,7 +193,10 @@ export class OptionService {
             throw new Error("无法确定当前角色状态，无法生成备用 GamePush");
         }
         const success = presetOption?.是否成功 ?? true;
-        const { push } = await gps.pushGame(character, currentStatus, choice, success);
+        const { push } = await gps.pushGame(character, currentStatus, choice, success, presetOption ? {
+            选项类别: presetOption.选项类别,
+            选项难度: presetOption.选项难度,
+        } : undefined);
         return push;
     }
 

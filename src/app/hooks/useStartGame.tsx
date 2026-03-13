@@ -9,6 +9,7 @@ import { GamePushResponse } from '@/interfaces';
 const useStartGame = () => {
   const { routerTo } = useRoute();
   const [char] = useRecoilState(characterState)
+  const setChar = useRecoilState(characterState)[1]
   const setGamePush = useRecoilState(gamePushState)[1]
   const setLoadingText = useRecoilState(loadingState)[1]
   const { showToast } = useToast()
@@ -20,14 +21,17 @@ const useStartGame = () => {
     const mainAction = () => {
       startGameApi(char.id).then((res:GamePushResponse) => {
         setGamePush(res);
+        if (res.factionData) {
+          setChar((previous) => previous ? { ...previous, factionData: res.factionData } : previous);
+        }
         setLoadingText([true, "story"]);
       }).catch(() => {
-          showToast("被神秘存在扰乱因果，正在重试", 2000)
+          showToast("模型调用失败，正在重试。请检查设置中的 API Key、Base URL 与模型名。", 2600)
           if (!retryTime) {
             retryTime++
             return mainAction()
           }
-          showToast("重试失败，意识陷入混沌，即将返回", 3000)
+          showToast("仍然无法生成剧情，即将返回角色页。", 3000)
           setTimeout(() => {
             routerTo("char")
           }, 2000)
@@ -37,7 +41,7 @@ const useStartGame = () => {
     mainAction()
     
     routerTo("loading");
-  }, [setGamePush, setLoadingText, showToast,routerTo, char?.id]);
+  }, [setChar, setGamePush, setLoadingText, showToast,routerTo, char?.id]);
 
   return { startGame };
 };
