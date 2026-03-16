@@ -1,8 +1,28 @@
 {
-  "name": "mob.ai.v3",
+  "name": "open-cultivation-simulator",
   "version": "0.1.0",
+  "description": "Open-source, local-first AI cultivation narrative game built with Next.js, SQLite, and configurable LLM providers.",
   "private": true,
+  "license": "MIT",
   "type": "module",
+  "homepage": "https://github.com/cdotlock/Open-Cultivation-Simulator",
+  "bugs": {
+    "url": "https://github.com/cdotlock/Open-Cultivation-Simulator/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cdotlock/Open-Cultivation-Simulator.git"
+  },
+  "keywords": [
+    "ai",
+    "game",
+    "xianxia",
+    "cultivation",
+    "nextjs",
+    "sqlite",
+    "llm"
+  ],
+  "author": "Clock and contributors",
   "scripts": {
     "bootstrap": "node scripts/bootstrap-local.mjs",
     "assets:sync": "node scripts/sync-oss-assets.mjs",
