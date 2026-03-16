@@ -30,7 +30,7 @@ import type {
   FactionWorldSummary,
   WorldEventView,
 } from "@/interfaces/faction";
-import type { GameOptionType } from "@/interfaces/schemas";
+import type { GameOptionType, StoryPushType } from "@/interfaces/schemas";
 
 const WORLD_TURN_INTERVAL = 3;
 const SEASONS = ["春分", "长夏", "白露", "玄冬"] as const;
@@ -171,6 +171,29 @@ const RESOURCE_TAG_VALUES: Record<string, number> = {
   水道: 10,
   瘴气: 8,
 };
+const GENERIC_CHARACTER_TOKENS = new Set([
+  "",
+  "你",
+  "自己",
+  "本人",
+  "路人",
+  "旁人",
+  "众人",
+  "人群",
+  "行人",
+  "修士们",
+  "弟子们",
+]);
+const CHARACTER_ABSENCE_PATTERNS = [
+  "无人",
+  "空无一人",
+  "四下无人",
+  "不见人影",
+  "没有旁人",
+];
+const CHARACTER_ROLE_PATTERN =
+  /(长老|执事|弟子|师兄|师姐|师叔|师伯|掌门|宗主|门主|护法|供奉|客卿|真人|散修|守卫|守将|探子|使者|掌柜|商旅|药师|矿奴|城主|家主|首座|阁主|坛主|堂主|族老|前辈|老者|少女|少年|妇人|汉子)/;
+const MOVEMENT_HINTS = ["前往", "赶往", "抵达", "来到", "潜入", "踏入", "行至", "奔赴", "折返", "回到", "深入", "转往"];
 
 export type PreparedFactionWorldDraft = {
   seed: string;
@@ -212,6 +235,7 @@ type IntentCandidate = FactionIntent & {
 type FactionReflection = z.infer<typeof factionReflectionSchema>;
 type FactionPlanning = z.infer<typeof factionPlanningSchema>;
 type FactionPromptConfig = Awaited<ReturnType<typeof ConfigService.getConfig>>;
+type FactionModelConfig = NonNullable<FactionPromptConfig["model"]>;
 type FactionPromptBundle = {
   reflection?: FactionPromptConfig;
   planning?: FactionPromptConfig;
@@ -1801,21 +1825,229 @@ function matchesMissionCategory(category: string, actionType: GameOptionType["�
     内政: ["交流", "探索"],
     修行: ["探索", "战斗"],
     复仇: ["战斗"],
+    资源争夺: ["探索", "战斗"],
   };
   return (mapping[category] || ["探索"]).includes(actionType);
+}
+
+type StoryOutcomeSignal = {
+  inferredNodeId?: number;
+  hasMeaningfulCharacters: boolean;
+};
+
+function isMeaningfulCharacterMention(name: string) {
+  const trimmed = compactText(name);
+  if (!trimmed) {
+    return false;
+  }
+
+  if (CHARACTER_ABSENCE_PATTERNS.some((pattern) => trimmed.includes(pattern))) {
+    return false;
+  }
+
+  if (GENERIC_CHARACTER_TOKENS.has(trimmed)) {
+    return false;
+  }
+
+  if (trimmed.length >= 2 && !/^第.+人$/.test(trimmed)) {
+    return true;
+  }
+
+  return CHARACTER_ROLE_PATTERN.test(trimmed);
+}
+
+function hasMeaningfulCharacters(storyInfo?: StoryPushType) {
+  const characters = (storyInfo?.节点要素?.剧情要素?.人物 || []).map((item) => compactText(item)).filter(Boolean);
+  if (characters.some(isMeaningfulCharacterMention)) {
+    return true;
+  }
+
+  const plot = compactText(storyInfo?.节点要素?.剧情要素?.剧情);
+  return CHARACTER_ROLE_PATTERN.test(plot);
+}
+
+function inferNodeFromStory(
+  nodes: Pick<MapNode, "id" | "name" | "terrain" | "resourceTags" | "neighborNodeIds">[],
+  storyInfo: StoryPushType | undefined,
+  currentNodeId?: number,
+  missionTargetNodeId?: number,
+) {
+  if (!storyInfo || !nodes.length) {
+    return undefined;
+  }
+
+  const scenes = (storyInfo.节点要素?.剧情要素?.场景 || []).map((item) => compactText(item)).filter(Boolean);
+  const plot = compactText(storyInfo.节点要素?.剧情要素?.剧情);
+  const task = compactText(storyInfo.节点要素?.基础信息?.当前任务);
+  const joinedText = [plot, task, ...scenes].filter(Boolean).join(" ");
+  const hasMovementHint = MOVEMENT_HINTS.some((hint) => joinedText.includes(hint));
+
+  const ranked = nodes
+    .map((node) => {
+      let score = 0;
+      let exactNameHit = false;
+
+      if (scenes.some((scene) => includesLookupKey(scene, node.name))) {
+        score += 18;
+        exactNameHit = true;
+      }
+
+      if ([plot, task].some((text) => includesLookupKey(text, node.name))) {
+        score += 14;
+        exactNameHit = true;
+      }
+
+      if (!exactNameHit && scenes.some((scene) => scene.includes(node.terrain))) {
+        score += 4;
+      }
+
+      if (!exactNameHit && [plot, task].some((text) => text.includes(node.terrain))) {
+        score += 3;
+      }
+
+      const resourceHits = readStringArray(node.resourceTags).filter((tag) =>
+        [plot, task, ...scenes].some((text) => text.includes(tag)),
+      ).length;
+      score += Math.min(2, resourceHits) * 2;
+
+      if (missionTargetNodeId && node.id === missionTargetNodeId) {
+        if (exactNameHit) {
+          score += 6;
+        } else if (score > 0) {
+          score += 4;
+        }
+      }
+
+      if (
+        hasMovementHint &&
+        currentNodeId &&
+        node.id !== currentNodeId &&
+        readNumberArray(node.neighborNodeIds).includes(currentNodeId) &&
+        score > 0
+      ) {
+        score += 3;
+      }
+
+      if (node.id === currentNodeId && exactNameHit) {
+        score += 2;
+      }
+
+      return {
+        nodeId: node.id,
+        score,
+        exactNameHit,
+      };
+    })
+    .sort((left, right) => right.score - left.score);
+
+  const best = ranked[0];
+  const runnerUp = ranked[1];
+
+  if (!best || best.score <= 0) {
+    return undefined;
+  }
+
+  if (best.exactNameHit) {
+    return best.nodeId;
+  }
+
+  if (missionTargetNodeId && best.nodeId === missionTargetNodeId && best.score >= 8) {
+    return best.nodeId;
+  }
+
+  if (best.score >= 10 && (!runnerUp || best.score - runnerUp.score >= 3)) {
+    return best.nodeId;
+  }
+
+  return undefined;
+}
+
+async function analyzeStoryOutcome(
+  worldId: number | undefined,
+  storyInfo: StoryPushType | undefined,
+  currentNodeId?: number,
+  missionTargetNodeId?: number,
+): Promise<StoryOutcomeSignal> {
+  const signal: StoryOutcomeSignal = {
+    hasMeaningfulCharacters: hasMeaningfulCharacters(storyInfo),
+  };
+
+  if (!worldId || !storyInfo) {
+    return signal;
+  }
+
+  const nodes = await prisma.mapNode.findMany({
+    where: { worldId },
+    select: {
+      id: true,
+      name: true,
+      terrain: true,
+      resourceTags: true,
+      neighborNodeIds: true,
+    },
+  });
+
+  signal.inferredNodeId = inferNodeFromStory(nodes, storyInfo, currentNodeId, missionTargetNodeId);
+  return signal;
+}
+
+function calculateMissionProgressGain(
+  mission: IncludedMissionRecord,
+  option: Pick<GameOptionType, "选项类别" | "选项难度">,
+  success: boolean,
+  signal: StoryOutcomeSignal,
+  fallbackNodeId?: number,
+) {
+  if (!success || mission.status !== "ACTIVE" || !matchesMissionCategory(mission.category, option.选项类别)) {
+    return 0;
+  }
+
+  const activeNodeId = signal.inferredNodeId || fallbackNodeId;
+  const atTargetNode = Boolean(mission.targetNodeId && activeNodeId === mission.targetNodeId);
+  const hardBonus = option.选项难度 === "逆天而行" ? 1 : 0;
+
+  switch (mission.category) {
+    case "外交":
+      if (option.选项类别 !== "交流" || !signal.hasMeaningfulCharacters) {
+        return 0;
+      }
+      return Math.min(2, 1 + hardBonus + (atTargetNode ? 1 : 0));
+    case "内政":
+      if (!signal.hasMeaningfulCharacters) {
+        return 0;
+      }
+      return Math.min(2, 1 + hardBonus + (option.选项类别 === "交流" ? 1 : 0));
+    case "扩张":
+    case "资源争夺":
+    case "复仇":
+      if (mission.targetNodeId && !atTargetNode) {
+        return 0;
+      }
+      return Math.min(2, 1 + hardBonus + (option.选项类别 === "战斗" ? 1 : 0));
+    case "修行":
+      return Math.min(2, 1 + hardBonus + (option.选项类别 === "探索" ? 1 : 0));
+    default:
+      return Math.min(2, 1 + hardBonus);
+  }
 }
 
 export async function recordFactionActionOutcome(
   characterId: number,
   option: Pick<GameOptionType, "选项类别" | "选项难度">,
   success: boolean,
+  storyInfo?: StoryPushType,
 ) {
   const state = await prisma.characterFactionState.findUnique({
     where: { characterId },
     include: {
-      activeMission: true,
+      activeMission: {
+        include: {
+          targetNode: true,
+        },
+      },
       faction: true,
       character: true,
+      currentNode: true,
     },
   });
 
@@ -1823,13 +2055,29 @@ export async function recordFactionActionOutcome(
     return;
   }
 
+  const signal = await analyzeStoryOutcome(
+    state.character?.worldId || state.faction.worldId,
+    storyInfo,
+    state.currentNodeId || undefined,
+    state.activeMission?.targetNodeId || undefined,
+  );
+
+  const statePatch: Prisma.CharacterFactionStateUpdateInput = {};
+  if (signal.inferredNodeId && signal.inferredNodeId !== state.currentNodeId) {
+    statePatch.currentNode = { connect: { id: signal.inferredNodeId } };
+  }
+
   if (success) {
+    statePatch.contribution = { increment: 1 };
+    if (option.选项类别 === "交流" && signal.hasMeaningfulCharacters) {
+      statePatch.trust = { increment: 1 };
+    }
+  }
+
+  if (Object.keys(statePatch).length > 0) {
     await prisma.characterFactionState.update({
       where: { characterId },
-      data: {
-        contribution: { increment: 1 },
-        trust: { increment: option.选项类别 === "交流" ? 1 : 0 },
-      },
+      data: statePatch,
     });
   }
 
@@ -1838,8 +2086,13 @@ export async function recordFactionActionOutcome(
   }
 
   const activeMission = state.activeMission;
-
-  const progressGain = success ? (option.选项难度 === "逆天而行" ? 2 : 1) : 0;
+  const progressGain = calculateMissionProgressGain(
+    activeMission,
+    option,
+    success,
+    signal,
+    state.currentNodeId || undefined,
+  );
   if (progressGain <= 0) {
     return;
   }
@@ -1909,6 +2162,12 @@ function compactText(input: unknown, fallback = "") {
 
 function normalizeLookupKey(input: string) {
   return input.replace(/[·\s，。、；：:,"'“”‘’（）()\-]/g, "").trim();
+}
+
+function includesLookupKey(haystack: string, needle: string) {
+  const normalizedHaystack = normalizeLookupKey(haystack);
+  const normalizedNeedle = normalizeLookupKey(needle);
+  return Boolean(normalizedHaystack && normalizedNeedle && normalizedHaystack.includes(normalizedNeedle));
 }
 
 function matchByName<T extends { name: string }>(items: T[], expected?: string) {
@@ -2292,15 +2551,44 @@ function canUsePromptConfig(config?: FactionPromptConfig) {
   return Boolean(config?.model?.name && config.model.apiKey?.trim());
 }
 
-async function loadFactionPromptBundle(): Promise<FactionPromptBundle> {
-  const [reflection, planning] = await Promise.all([
-    ConfigService.getConfig("faction_reflection_prompt").catch(() => undefined),
-    ConfigService.getConfig("faction_planning_prompt").catch(() => undefined),
-  ]);
+function mergePromptWithFallbackModel(
+  config: FactionPromptConfig | undefined,
+  fallbackModel: FactionModelConfig | undefined,
+) {
+  if (!config) {
+    return undefined;
+  }
+
+  if (canUsePromptConfig(config)) {
+    return config;
+  }
+
+  if (!fallbackModel?.name || !fallbackModel.apiKey?.trim()) {
+    return undefined;
+  }
 
   return {
-    reflection: canUsePromptConfig(reflection) ? reflection : undefined,
-    planning: canUsePromptConfig(planning) ? planning : undefined,
+    ...config,
+    modelId: fallbackModel.id,
+    model: fallbackModel,
+  };
+}
+
+async function loadFactionPromptBundle(): Promise<FactionPromptBundle> {
+  const [reflection, planning, storyPrompt, models] = await Promise.all([
+    ConfigService.getConfig("faction_reflection_prompt").catch(() => undefined),
+    ConfigService.getConfig("faction_planning_prompt").catch(() => undefined),
+    ConfigService.getConfig("story_prompt").catch(() => undefined),
+    ConfigService.getAllModels().catch(() => []),
+  ]);
+  const fallbackModel =
+    (storyPrompt?.model?.name && storyPrompt.model.apiKey?.trim() ? storyPrompt.model : undefined) ||
+    models.find((model) => model.isActive && model.apiKey?.trim()) ||
+    models.find((model) => model.apiKey?.trim());
+
+  return {
+    reflection: mergePromptWithFallbackModel(reflection, fallbackModel),
+    planning: mergePromptWithFallbackModel(planning, fallbackModel),
   };
 }
 

@@ -7,7 +7,6 @@ import { GameOptionType, BreakthroughResponse, FormattedCharacterStatus } from "
 import { pushGame } from "../actions/game/action";
 import { analyzeCustomOption } from "../actions/module/analyzeOption";
 import { useRouter } from 'next/navigation';
-import { difficultyLevelMap } from "@/interfaces/const";
 import { useBgm } from '../hooks/useBgm';
 import { CharStatusBar } from "./CharStatusBar";
 import useRoute from "../hooks/useRoute";
@@ -33,7 +32,7 @@ type BreakthroughStatus = FormattedCharacterStatus & {
   _breakthroughMessage?: string;
 };
 
-const storyProseClass = "mx-6 mt-4 whitespace-pre-wrap text-[18px] leading-[1.85] text-[#524a37]";
+const storyProseClass = "mx-5 mt-4 whitespace-pre-wrap text-[17px] leading-[1.95] text-[#524a37]";
 const loadingTexts = [
   "天地灵气正在汇聚",
   "因果轮回悄然运转",
@@ -42,6 +41,10 @@ const loadingTexts = [
   "时空长河泛起涟漪",
   "造化玉碟解析天机"
 ];
+const STREAM_REVEAL_DURATION_MS = 4200;
+const STREAM_MIN_INTERVAL_MS = 16;
+const STREAM_MAX_INTERVAL_MS = 34;
+const STREAM_TARGET_STEPS = 140;
 
 // 将剧情文本转换为段落化 HTML，便于后续展示
 const buildStoryHtml = (story: string) => {
@@ -86,15 +89,14 @@ const CustomInputButton = ({ onClick }: { onClick: (customInput: string) => void
 
   return (
     <>
-      <div 
-        className="font-bold cursor-pointer w-full h-12 bg-[#222222] text-white flex items-center justify-center rounded"
+      <button
+        type="button"
+        className="flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[20px] border border-[rgba(245,229,201,0.18)] bg-[linear-gradient(180deg,rgba(30,23,18,0.94),rgba(15,12,10,0.98))] px-4 text-white shadow-[0_16px_30px_rgba(22,14,9,0.16)] transition-transform active:translate-y-[1px]"
         onClick={handleButtonClick}
       >
-        <img className="w-[20px] h-[20px] mr-1" src={$img('newStory/icon-edit')} alt="" />
-        <div>
-          我有其他行动的想法
-        </div>
-      </div>
+        <img className="h-[20px] w-[20px]" src={$img('newStory/icon-edit')} alt="" />
+        <span className="font-semibold tracking-[0.04em]">我有其他行动的想法</span>
+      </button>
       
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center">
@@ -102,11 +104,22 @@ const CustomInputButton = ({ onClick }: { onClick: (customInput: string) => void
           <div className="absolute inset-0 bg-[#F2EBD999] backdrop-blur-[3px]" onClick={handleClose} />
           {/* 输入面板 */}
           <div className="relative z-50 w-full mx-6">
-            <div className="flex gap-3 mb-3 rounded-lg bg-[#222222]">
+            <div className="mb-3 rounded-[22px] border border-[rgba(245,229,201,0.16)] bg-[linear-gradient(180deg,rgba(30,23,18,0.96),rgba(15,12,10,0.98))] p-3 shadow-[0_18px_40px_rgba(22,14,9,0.28)]">
+              <div className="mb-3 flex items-center justify-between px-1 text-[#f5e6ca]">
+                <div className="text-sm tracking-[0.14em]">自定行动</div>
+                <button
+                  type="button"
+                  className="rounded-full border border-[rgba(245,229,201,0.2)] px-3 py-1 text-xs text-[#d9c9ae]"
+                  onClick={handleClose}
+                >
+                  关闭
+                </button>
+              </div>
+              <div className="flex items-end gap-3">
               {/* 左侧文本输入区 */}
               <textarea
-                className="flex-1 p-3 text-white border border-none resize-y focus:outline-none"
-                placeholder="请输入您的自定义输入..."
+                className="min-h-[140px] flex-1 resize-y rounded-[18px] border border-[rgba(245,229,201,0.16)] bg-[rgba(255,255,255,0.03)] p-4 text-white placeholder:text-[#bcae96] focus:outline-none"
+                placeholder="写下你想做的事，例如试探、偷袭、交涉或布置陷阱。"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => {
@@ -116,7 +129,15 @@ const CustomInputButton = ({ onClick }: { onClick: (customInput: string) => void
                   }
                 }}
               />
-              <img onClick={handleSubmit} className="w-[40px] h-[40px] mt-auto" src={$img('newStory/story-submit')} alt="" />
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full bg-[rgba(215,197,118,0.16)]"
+                  aria-label="提交自定义行动"
+                >
+                  <img className="h-[40px] w-[40px]" src={$img('newStory/story-submit')} alt="" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -136,19 +157,20 @@ const GameOptions = ({ onNext, onCustomInput }: {
   }
   const playerOptions = gamePush.gamePush.节点要素.剧情要素.玩家选项
 
-  return <div className="my-20 flex flex-col gap-6 text-white text-sm text-center">
+  return <div className="my-10 flex flex-col gap-4 text-white">
     {playerOptions.length > 0 && playerOptions.map((item, index) => (
-      <div 
+      <button
+        type="button"
         key={index} 
-        className="cursor-pointer gap-1 flex flex-row items-center justify-center w-full aspect-[327/48]"
-        style={{background: `url(${$img('newStory/story-select-bg')}) center center / cover no-repeat`}}
+        className="flex min-h-[58px] w-full flex-row items-center gap-3 rounded-[20px] border border-[rgba(245,229,201,0.16)] px-4 py-3 text-left shadow-[0_14px_30px_rgba(22,14,9,0.12)] transition-transform active:translate-y-[1px]"
+        style={{background: `linear-gradient(180deg,rgba(58,43,34,0.94),rgba(25,18,14,0.98)), url(${$img('newStory/story-select-bg')}) center center / cover no-repeat`}}
         onClick={() => onNext(item)}
       >
-        <div className="flex-shrink-0 text-sm text-center">
+        <div className="shrink-0 text-[12px] text-[#e7d6b6]">
           [{item.选项类别} - {item.选项难度}]
         </div>
-        <div className="text-sm text-center">{item.选项描述}</div>
-      </div>
+        <div className="text-[14px] leading-[1.6] text-[#fff6e4]">{item.选项描述}</div>
+      </button>
     ))}
     <CustomInputButton onClick={onCustomInput} />
   </div>
@@ -159,6 +181,7 @@ const StatusStreaming = ({ complete }: { complete: (story: string) => void }) =>
   const [displayText, setDisplayText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const startTimeRef = useRef<number>(0);
+  const finishedRef = useRef(false);
 
   const storyText = useMemo(() => {
     const storyNode = gamePush?.gamePush?.节点要素?.剧情要素;
@@ -167,6 +190,8 @@ const StatusStreaming = ({ complete }: { complete: (story: string) => void }) =>
   }, [gamePush]);
 
   useEffect(() => {
+    finishedRef.current = false;
+
     if (!gamePush) {
       setDisplayText("");
       setIsTyping(false);
@@ -191,20 +216,38 @@ const StatusStreaming = ({ complete }: { complete: (story: string) => void }) =>
     setIsTyping(true);
     startTimeRef.current = (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
+    const finishReveal = () => {
+      if (finishedRef.current) {
+        return;
+      }
+
+      finishedRef.current = true;
+      setDisplayText(storyText);
+      setIsTyping(false);
+      const end = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      const durationMs = Math.max(0, Math.round(end - startTimeRef.current));
+      trackEvent(UmamiEvents.故事生成完成, { chars: characters.length, ms: durationMs });
+      complete(buildStoryHtml(storyText));
+    };
+
     let index = 0;
+    const stepSize = Math.max(2, Math.ceil(characters.length / STREAM_TARGET_STEPS));
+    const steps = Math.max(1, Math.ceil(characters.length / stepSize));
+    const intervalMs = Math.max(
+      STREAM_MIN_INTERVAL_MS,
+      Math.min(STREAM_MAX_INTERVAL_MS, Math.floor(STREAM_REVEAL_DURATION_MS / steps)),
+    );
+
     const timer = window.setInterval(() => {
-      setDisplayText((prev) => prev + characters[index]);
-      index += 1;
+      const nextIndex = Math.min(characters.length, index + stepSize);
+      setDisplayText(characters.slice(0, nextIndex).join(""));
+      index = nextIndex;
 
       if (index >= characters.length) {
         window.clearInterval(timer);
-        setIsTyping(false);
-        const end = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-        const durationMs = Math.max(0, Math.round(end - startTimeRef.current));
-        trackEvent(UmamiEvents.故事生成完成, { chars: characters.length, ms: durationMs });
-        complete(buildStoryHtml(storyText));
+        finishReveal();
       }
-    }, 35);
+    }, intervalMs);
 
     return () => {
       window.clearInterval(timer);
@@ -262,161 +305,6 @@ const StatusLoading = ({ loadingAnimateState = true }: { loadingAnimateState?: b
     </div>
   );
 };
-
-const DiceAnimate = ( props: { option: GameOptionType, timeout: () => void }) => {
-  const option = props.option
-  const [phase, setPhase] = useState<'entering' | 'rolling' | 'result' | 'success'>('entering')
-  const [dice1, setDice1] = useState(1)
-  const [dice2, setDice2] = useState(1)
-  
-  // 计算总点数（基础骰子 + 额外点数）
-  const totalDiceValue = option?.骰子?.reduce((sum, val) => sum + val, 0) || 0
-  const baseDiceValue = (option?.骰子?.[0] || 0) + (option?.骰子?.[1] || 0)
-  const extraPoints = totalDiceValue - baseDiceValue
-  
-  const topPanelRef = useRef<HTMLDivElement>(null)
-  const diceContainerRef = useRef<HTMLDivElement>(null)
-  const difficultyNumberRef = useRef<HTMLDivElement>(null)
-  const resultTextRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const animateSequence = async () => {
-      // 1. 入场动画 - 弹窗先出现
-      if (topPanelRef.current) {
-        topPanelRef.current.animate([
-          { transform: 'translateY(20px)', opacity: 0 },
-          { transform: 'translateY(0)', opacity: 1 }
-        ], {
-          duration: 600,
-          delay: 800,
-          easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-          fill: 'forwards'
-        })
-      }
-
-      // 骰子容器错开100ms出现
-      if (diceContainerRef.current) {
-        diceContainerRef.current.animate([
-          { transform: 'translateY(20px)', opacity: 0 },
-          { transform: 'translateY(0)', opacity: 1 }
-        ], {
-          duration: 600,
-          delay: 900,
-          easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-          fill: 'forwards'
-        })
-      }
-
-      // 2. 等待入场动画完成后开始滚动
-      setTimeout(() => {
-        setPhase('rolling')
-        
-        // 开始滚动动画
-        const rollInterval = setInterval(() => {
-          setDice1(Math.floor(Math.random() * 6) + 1)
-          setDice2(Math.floor(Math.random() * 6) + 1)
-        }, 100)
-
-        // 2秒后停止滚动，显示最终结果
-        setTimeout(() => {
-          setPhase('result')
-          setDice1(option?.骰子?.[0] || 1)
-          setDice2(option?.骰子?.[1] || 1)
-          clearInterval(rollInterval)
-
-          // 难度等级数字动画：先变大后变小
-          if (difficultyNumberRef.current) {
-            const scaleAnimation = difficultyNumberRef.current.animate([
-              { transform: 'scale(1)', color: '#FFE7C4' },
-              { transform: 'scale(1.3)', color: option?.是否成功 ? '#10B981' : '#EF4444' },
-              { transform: 'scale(1)', color: option?.是否成功 ? '#10B981' : '#EF4444' }
-            ], {
-              duration: 800,
-              easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)'
-            })
-
-            // 数字动画完成后显示成功/失败文字
-            scaleAnimation.onfinish = () => {
-              setPhase('success')
-              
-              // 维持2秒后消失
-              setTimeout(() => {
-                props.timeout()
-              }, 2000)
-            }
-          }
-        }, 2000)
-      }, 1500) // 等待入场动画完成(800 + 600 + 100ms缓冲)
-    }
-
-    animateSequence()
-  }, [option, props])
-
-  return <div className="fixed inset-0 z-40 bg-[#0000009e] flex flex-col gap-[12px] justify-center items-center">
-    <div 
-      ref={topPanelRef}
-      className="w-[247px] h-[123px] flex flex-col justify-center items-center opacity-0"
-      style={{ background: `url(${$img('story/dice-top')}) center center / cover no-repeat` }}
-    >
-      <div className="w-[3em] text-center text-[18px] leading-[1] text-[#CCC2C3]">难度等级</div>
-      <div className="mt-[8px] text-[40px] leading-[1] text-[#D4752D]">
-        {phase === 'success' ? (
-          <div ref={resultTextRef}>
-            {option?.是否成功 ? "成功" : "失败"}
-          </div>
-        ) : (
-          <div 
-            ref={difficultyNumberRef}
-            className="text-[#FFE7C4]"
-          >
-            {phase === 'rolling' ? difficultyLevelMap.get(option?.选项难度 || "轻而易举") : difficultyLevelMap.get(option?.选项难度 || "轻而易举")}
-          </div>
-        )}
-      </div>
-    </div>
-    
-    <div 
-      ref={diceContainerRef}
-      className="w-[247px] h-[231px] opacity-0" 
-      style={{ background: `url(${$img('story/dice-button')}) center center / cover no-repeat` }}
-    >
-      <div className="flex mt-[26px] flex-row justify-center text-[#FFE7C4] text-[56px] items-center gap-[12px]">
-        <div 
-          className={`w-[108px] h-[108px] flex flex-col justify-center items-center transition-all duration-150 ${
-            phase === 'rolling' ? 'animate-pulse scale-110' : ''
-          }`}
-          style={{ background: `url(${$img('story/dice')}) center center / cover no-repeat` }}
-        >
-          {dice1}
-        </div>
-        <div
-          className={`w-[108px] h-[108px] flex flex-col justify-center items-center transition-all duration-150 ${
-            phase === 'rolling' ? 'animate-pulse scale-110' : ''
-          }`}
-          style={{ background: `url(${$img('story/dice')}) center center / cover no-repeat` }}
-        >
-          {dice2}
-        </div>
-      </div>
-      
-      {/* 额外点数信息显示 */}
-      {phase !== 'rolling' && extraPoints > 0 && (
-        <div className="text-center text-[#FFE7C4] text-[20px] mt-2">
-          {baseDiceValue} + {extraPoints} = {totalDiceValue}
-        </div>
-      )}
-
-          {/* 底部额外点数记录区域 */}
-      {(phase === 'result' || phase === 'success') && option?.变动原因 && option.变动原因.length > 0 && (
-        <div className="w-full text-[14px] h-[100px] text-[#CCC2C3] flex flex-col items-center justify-center gap-1">
-          {option.变动原因.map((reason, index) => (
-            <div key={index}>{reason}</div> 
-          ))}
-        </div>
-      )}
-    </div>
-  </div>
-}
 
 const StatusPlaying = ({ story, onNext, setGameState, imageUrl, showImage }: { story: string, onNext: (option: GameOptionType) => void, setGameState: (state: gameState) => void, imageUrl?: string, showImage?: boolean }) => {
   const [option, setOption] = useState<GameOptionType | null>(null)
@@ -551,7 +439,7 @@ const StatusPlaying = ({ story, onNext, setGameState, imageUrl, showImage }: { s
     }
   }, [option, onNext, char, setGameState, setGamePush, gamePush])
 
-  return <div className="text-[18px] relative w-full h-[calc(100vh-112px)] text-[#524a37]">
+  return <div className="relative h-[calc(100vh-112px)] w-full text-[18px] text-[#524a37]">
     {isAnalyzing && (
       <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#00000080]">
         <div className="text-white text-[16px]">自定义选项分析中...</div>
@@ -572,15 +460,17 @@ const StatusPlaying = ({ story, onNext, setGameState, imageUrl, showImage }: { s
       </div>
     )}
     
-    <div className="w-screen h-[44px] relative z-40 my-4 flex flex-row justify-start px-2 gap-1 items-center"
-      style={{ background: `url(${$img('newStory/story-locate')}) center center / 100% 44px no-repeat` }}>
+    <div
+      className="relative z-40 mx-auto my-4 flex h-[44px] w-[calc(100%-20px)] max-w-[420px] flex-row items-center gap-1 px-3"
+      style={{ background: `url(${$img('newStory/story-locate')}) center center / 100% 44px no-repeat` }}
+    >
       <div className="text-[#F2EBD9] text-[13px]">{gamePush?.gamePush?.节点要素?.基础信息?.当前任务}</div>
       <img className="h-[20px] w-[20px]" src={$img('newStory/distance')} alt="" />
     </div>
     
     {/* 正常内容，在预览状态下隐藏 */}
     {!isPreviewing && (
-      <div className="px-[24px]">
+      <div className="px-[22px] pb-10">
         <div
           className={storyProseClass}
           dangerouslySetInnerHTML={{ __html: story }}
@@ -753,7 +643,7 @@ const PageStory= () => {
   }, [char?.factionData, char?.id, setChar]);
 
   return (
-    <div className="text-[18px] font-family-song flex flex-col justify-start items-center w-full overflow-y-scroll"
+    <div className="flex w-full flex-col items-center justify-start overflow-y-scroll pb-6 font-family-song text-[18px]"
       style={{ letterSpacing: '0.05em' }}>
       {gamePush && <CharStatusBar current={gamePush.newStatus} delta={gamePush.statusDelta} />}
       {char.factionData ? (

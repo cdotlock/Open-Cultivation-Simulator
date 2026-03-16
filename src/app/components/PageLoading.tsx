@@ -109,7 +109,7 @@ export default function PageLoading() {
       className={`
         relative 
         w-full 
-        h-[calc(100vh-48px)] 
+        min-h-screen 
         overflow-hidden
         ${fadeOut ? 'animate-fadeOut' : 'animate-fadeIn'}
       `}

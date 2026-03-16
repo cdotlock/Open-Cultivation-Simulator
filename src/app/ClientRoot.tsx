@@ -2,12 +2,7 @@
 
 import { FC, useEffect, useState } from "react"
 import { RecoilRoot } from "recoil"
-import { useLogin } from "./hooks/useLogin"
-import useRoute from "./hooks/useRoute"
-import { useRouter } from "next/navigation"
 import ToastProvider from "./components/ToastProvider"
-import { $img } from "../utils/index"
-import Image from "next/image"
 
 type DesktopPreviewSize = {
   width: number
@@ -26,7 +21,7 @@ function getDesktopPreviewSize(viewportWidth: number, viewportHeight: number): D
   const availableHeight = Math.max(540, viewportHeight - verticalPadding * 2)
   const scaleByWidth = availableWidth / PREVIEW_CANVAS.width
   const scaleByHeight = availableHeight / PREVIEW_CANVAS.height
-  const scale = Math.min(scaleByWidth, scaleByHeight, 1.08)
+  const scale = Math.min(scaleByWidth, scaleByHeight, 1.16)
 
   return {
     width: Math.round(PREVIEW_CANVAS.width * scale),
@@ -34,85 +29,12 @@ function getDesktopPreviewSize(viewportWidth: number, viewportHeight: number): D
   }
 }
 
-const CustomHeader = () => {
-  const router = useRouter()
-  const { user, isLoggedIn, isInitialized } = useLogin()
-  const { routerTo } = useRoute()
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && user) {
-      localStorage.setItem("userInfo", JSON.stringify(user))
-    }
-  }, [user])
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && !user) {
-      localStorage.removeItem("userInfo")
-    }
-  }, [user])
-
-  const handleLogoClick = () => {
-    routerTo("home")
-  }
-
-  return (
-    <>
-      <header className="fixed left-0 top-0 z-50 flex h-[48px] w-full items-center justify-between bg-white p-[8px_16px]">
-        <Image
-          width={596}
-          height={920}
-          unoptimized
-          className="h-[32px] w-[71px] cursor-pointer"
-          src={$img("logo2")}
-          alt="logo2"
-          onClick={handleLogoClick}
-        />
-        <div className="flex items-center gap-3 text-sm">
-          {isInitialized ? (
-            isLoggedIn && user ? (
-              <>
-                <span className="text-[#6b5738]">{user.phone || "本地洞府"}</span>
-                <button
-                  onClick={() => router.push("/pages/settings")}
-                  className="rounded-full border border-[#8e6a38] bg-[#f9f0de] px-3 py-1 text-[#5e4523]"
-                >
-                  设置
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={() => router.push("/pages/settings")}
-                className="rounded-full border border-[#8e6a38] bg-[#f9f0de] px-3 py-1 text-[#5e4523]"
-              >
-                设置
-              </button>
-            )
-          ) : (
-            <button className="font-medium opacity-0" disabled>
-              设置
-            </button>
-          )}
-        </div>
-      </header>
-      <div className="h-[48px] w-full bg-white" />
-    </>
-  )
-}
-
 const MobileAppShell: FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <RecoilRoot override={true}>
       <ToastProvider>
-        <div className="h-screen w-screen overflow-hidden bg-white">
-          <CustomHeader />
-          <div
-            style={{
-              height: `calc(100vh - 48px)`,
-            }}
-            className="w-screen overflow-y-scroll"
-          >
-            {children}
-          </div>
+        <div className="min-h-screen w-full overflow-x-hidden overflow-y-auto bg-[#F2EBD9]">
+          {children}
         </div>
       </ToastProvider>
     </RecoilRoot>
@@ -153,19 +75,27 @@ const ClientRoot: FC<{ children: React.ReactNode }> = ({ children }) => {
 
   if (showDesktopPreview) {
     return (
-      <div className="flex min-h-screen w-full items-center justify-center overflow-auto bg-[#ddd1bc] px-6 py-5">
-        <div
-          className="overflow-hidden rounded-[28px] border border-[rgba(112,82,44,0.18)] bg-[#f7f1e3] shadow-[0_24px_60px_rgba(42,29,15,0.14)]"
-          style={{
-            width: `${previewSize.width}px`,
-            height: `${previewSize.height}px`,
-          }}
-        >
-          <iframe
-            title="mobile-preview"
-            src={iframeSrc}
-            className="h-full w-full border-0 bg-white"
-          />
+      <div className="relative min-h-screen w-full overflow-hidden bg-[radial-gradient(circle_at_top,rgba(255,247,232,0.96),rgba(226,210,183,0.9)_48%,rgba(205,188,160,0.96))]">
+        <div className="absolute inset-0 bg-[linear-gradient(140deg,rgba(255,255,255,0.2),transparent_42%,rgba(99,73,38,0.08))]" />
+        <div className="relative mx-auto flex min-h-screen w-full items-center justify-center px-5 py-6">
+          <div className="relative">
+            <div className="absolute inset-[-20px] rounded-[44px] bg-[radial-gradient(circle,rgba(217,184,126,0.3),rgba(217,184,126,0)_72%)] blur-[34px]" />
+            <div className="relative overflow-hidden rounded-[38px] border border-[rgba(112,82,44,0.14)] bg-[linear-gradient(180deg,rgba(247,241,227,0.98),rgba(240,230,212,0.94))] p-3 shadow-[0_34px_80px_rgba(42,29,15,0.18)]">
+              <div
+                className="overflow-hidden rounded-[30px] border border-[rgba(112,82,44,0.14)] bg-[#F2EBD9]"
+                style={{
+                  width: `${previewSize.width}px`,
+                  height: `${previewSize.height}px`,
+                }}
+              >
+                <iframe
+                  title="mobile-preview"
+                  src={iframeSrc}
+                  className="h-full w-full border-0 bg-[#F2EBD9]"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )

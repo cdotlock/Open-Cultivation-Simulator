@@ -199,10 +199,6 @@ export class GamePushService {
         success: boolean,
         selectedOption?: Pick<GameOptionType, "选项类别" | "选项难度">
     ): Promise<{ push: GamePush; delta: StatusDelta }> {
-        if (selectedOption) {
-            await recordFactionActionOutcome(character.id, selectedOption, success);
-        }
-
         const nextPlayerTurn = this.calculateTurnCount(currentStatus) + 1;
         await maybeAdvanceFactionWorldTurn(character.id, nextPlayerTurn);
 
@@ -229,6 +225,15 @@ export class GamePushService {
             currentStatus,
             '推进游戏预设结果-预roll'
         );
+
+        if (selectedOption) {
+            await recordFactionActionOutcome(
+                character.id,
+                selectedOption,
+                success,
+                result.push.info as StoryPushType,
+            );
+        }
 
         return result;
     }

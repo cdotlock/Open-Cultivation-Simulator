@@ -5,6 +5,7 @@ import { ramdomFirstName, ramdomIdentity, ramdomLastName } from '@/utils/ramdom'
 import { useLogin } from '../hooks/useLogin';
 import useGameControll from '@/app/hooks/useGameControll';
 import { CharacterCreationSection } from './CharacterCreationSection';
+import { $img } from '@/utils';
 
 const MAX_ATTRIBUTE_POINTS = 5
 
@@ -183,45 +184,136 @@ export default function PageCreateChar() {
   }, [canCreate, toCreateLoadingPage, createForm, selectedSpiritRoot, totalAttributes])
 
   const extraPointsUsed = getExtraPointsUsed()
+  const remainingPoints = MAX_ATTRIBUTE_POINTS - extraPointsUsed
+  const selectedSpiritRootLabel = useMemo(() => {
+    if (selectedSpiritRoot === null) {
+      return "未定"
+    }
+
+    return spiritRoots[selectedSpiritRoot].name.replace("灵根", "")
+  }, [selectedSpiritRoot])
 
   return (
-    <div className="text-[#111] text-[14px] flex flex-col items-center">
-      {/* 基本信息部分 */}
-      <div className="text-[24px] mt-[24px]">{`{ 创建角色 }`}</div>
-      <div className="text-[48px] ">{`"在下名为"`}</div>
-      <div>我将以这个名字开启修行之路 （确认后无法更改）</div>
-      
-      <div className="border-b-[1px] h-[56px] w-[calc(100vw-72px)] mt-[62px] box-border flex flex-row items-end justify-between leading-[1] pb-[7px]">
-        <div className="text-[#11111188]">姓氏</div>
-        <input className="text-[48px] w-[2em] focus-visible:outline-none text-center" maxLength={2} value={createForm[0]} onChange={(e) => handleUserInput(e, 0)} onFocus={() => track('web.create_character.input.click', { input_type: 'surname' })} />
-        <div onClick={handleRandomFirstName}>随机</div>
+    <div className="w-full px-4 pb-[134px] pt-5 text-[14px] text-[#111]">
+      <div className="mx-auto flex max-w-md flex-col gap-4">
+        <section className="rounded-[30px] border border-[#d6be92] bg-[linear-gradient(180deg,rgba(255,249,239,0.95),rgba(247,238,222,0.92))] px-5 py-5 shadow-[0_18px_36px_rgba(66,43,16,0.08)]">
+          <div className="text-center text-[13px] tracking-[0.22em] text-[#8c734a]">{`{ 创建角色 }`}</div>
+          <div className="mt-2 text-center font-family-song text-[34px] leading-[1.08] text-[#2f2212]">{`"在下名为"`}</div>
+          <div className="mt-3 text-center text-[12px] leading-[1.7] text-[#6d5a39]">
+            定下名讳、身份与灵根，便可踏上你的修行之路。
+          </div>
+
+          <div className="mt-5 grid gap-3">
+            <label className="grid gap-3 rounded-[22px] border border-[#decaa1] bg-[rgba(255,252,247,0.84)] px-4 py-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] tracking-[0.18em] text-[#8d734d]">姓氏</span>
+                <button
+                  type="button"
+                  onClick={handleRandomFirstName}
+                  className="rounded-full border border-[#c8ab79] bg-[#fcf4e3] px-3 py-[6px] text-[11px] text-[#6a5231]"
+                >
+                  随机
+                </button>
+              </div>
+              <input
+                className="w-full bg-transparent text-center font-family-song text-[34px] leading-none focus-visible:outline-none"
+                maxLength={2}
+                value={createForm[0]}
+                onChange={(e) => handleUserInput(e, 0)}
+                onFocus={() => track('web.create_character.input.click', { input_type: 'surname' })}
+              />
+            </label>
+
+            <label className="grid gap-3 rounded-[22px] border border-[#decaa1] bg-[rgba(255,252,247,0.84)] px-4 py-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] tracking-[0.18em] text-[#8d734d]">名字</span>
+                <button
+                  type="button"
+                  onClick={handleRandomLastName}
+                  className="rounded-full border border-[#c8ab79] bg-[#fcf4e3] px-3 py-[6px] text-[11px] text-[#6a5231]"
+                >
+                  随机
+                </button>
+              </div>
+              <input
+                className="w-full bg-transparent text-center font-family-song text-[34px] leading-none focus-visible:outline-none"
+                maxLength={2}
+                value={createForm[1]}
+                onChange={(e) => handleUserInput(e, 1)}
+                onFocus={() => track('web.create_character.input.click', { input_type: 'name' })}
+              />
+            </label>
+
+            <label className="grid gap-3 rounded-[22px] border border-[#decaa1] bg-[rgba(255,252,247,0.84)] px-4 py-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] tracking-[0.18em] text-[#8d734d]">身份</span>
+                <button
+                  type="button"
+                  onClick={handleRandomIdentity}
+                  className="rounded-full border border-[#c8ab79] bg-[#fcf4e3] px-3 py-[6px] text-[11px] text-[#6a5231]"
+                >
+                  随机
+                </button>
+              </div>
+              <input
+                className="w-full bg-transparent text-center text-[20px] text-[#2a2014] focus-visible:outline-none"
+                maxLength={9}
+                value={createForm[2]}
+                onChange={(e) => handleUserInput(e, 2)}
+                onFocus={() => track('web.create_character.input.click', { input_type: 'identity' })}
+              />
+            </label>
+          </div>
+        </section>
+
+        <section className="rounded-[30px] border border-[#d6be92] bg-[linear-gradient(180deg,rgba(247,239,225,0.96),rgba(242,235,217,0.94))] shadow-[0_18px_36px_rgba(66,43,16,0.06)]">
+          <CharacterCreationSection 
+            extraAttributePoints={bonus}
+            selectedSpiritRoot={selectedSpiritRoot}
+            onSpiritRootSelect={handleSpiritRootSelect}
+            attributePoints={attributePoints}
+            onAttributeChange={handleAttributeChange}
+            remainingPoints={remainingPoints}
+            totalPoints={MAX_ATTRIBUTE_POINTS}
+          />
+        </section>
       </div>
 
-      <div className="border-b-[1px] h-[56px] w-[calc(100vw-72px)] mt-[36px] box-border flex flex-row items-end justify-between leading-[1] pb-[7px]">
-        <div className="text-[#11111188]">名&nbsp;</div>
-        <input className="text-[48px] w-[2em] focus-visible:outline-none text-center" maxLength={2} value={createForm[1]} onChange={(e) => handleUserInput(e, 1)} onFocus={() => track('web.create_character.input.click', { input_type: 'name' })} />
-        <div onClick={handleRandomLastName}>随机</div>
-      </div>
+      <div className="fixed bottom-3 left-1/2 z-30 w-[calc(100vw-24px)] max-w-[430px] -translate-x-1/2 rounded-[26px] border border-[#ceb485] bg-[linear-gradient(180deg,rgba(251,244,232,0.96),rgba(242,232,211,0.98))] px-4 py-4 shadow-[0_24px_50px_rgba(52,33,12,0.18)] backdrop-blur-[10px]">
+        <div className="mb-3 flex items-center justify-between text-[12px] text-[#6d5838]">
+          <div>
+            <div className="tracking-[0.12em] text-[#927548]">灵根</div>
+            <div className="mt-1 font-family-song text-[18px] text-[#2f2212]">{selectedSpiritRootLabel}</div>
+          </div>
+          <div className="text-right">
+            <div className="tracking-[0.12em] text-[#927548]">剩余点数</div>
+            <div className="mt-1 text-[18px] font-semibold text-[#2f2212]">
+              {remainingPoints}/{MAX_ATTRIBUTE_POINTS}
+            </div>
+          </div>
+        </div>
 
-      <div className="border-b-[1px] h-[56px] w-[calc(100vw-72px)] mt-[36px] box-border flex flex-row items-end justify-between leading-[1] pb-[7px]">
-        <div className="text-[#11111188]">身份</div>
-        <input className="text-[20px] text-center w-[9em] focus-visible:outline-none" maxLength={9} value={createForm[2]} onChange={(e) => handleUserInput(e, 2)} onFocus={() => track('web.create_character.input.click', { input_type: 'identity' })} />
-        <div onClick={handleRandomIdentity}>随机</div>
-      </div>
-
-      {/* 新的灵根选择和属性加点部分 */}
-      <div className="mt-[40px] w-full flex flex-col items-center">
-        <CharacterCreationSection 
-          extraAttributePoints={bonus}
-          selectedSpiritRoot={selectedSpiritRoot}
-          onSpiritRootSelect={handleSpiritRootSelect}
-          attributePoints={attributePoints}
-          onAttributeChange={handleAttributeChange}
-          remainingPoints={MAX_ATTRIBUTE_POINTS - extraPointsUsed}
-          totalPoints={MAX_ATTRIBUTE_POINTS}
-          canCreate={canCreate}
-          onCreate={handleCreate}
-        />
+        <button
+          type="button"
+          onClick={handleCreate}
+          disabled={!canCreate}
+          className="flex w-full items-center justify-center"
+          aria-label={canCreate ? "创建角色" : "创建角色不可用"}
+        >
+          <img
+            style={{ filter: "drop-shadow(0px 6px 16px rgba(0, 0, 0, 0.24))" }}
+            className="w-[260px]"
+            src={$img(canCreate ? "btn-create-profile" : "btn-create-profile-dis")}
+            alt={canCreate ? "创建角色" : "创建角色不可用"}
+          />
+        </button>
+        <div className="mt-2 text-center text-[11px] leading-[1.6] text-[#6d5838]">
+          {canCreate
+            ? "灵根与属性已定，可以正式踏入修行。"
+            : selectedSpiritRoot === null
+              ? "先选定灵根，再将 5 点额外属性分配完。"
+              : `还需分配完 ${remainingPoints} 点额外属性。`}
+        </div>
       </div>
     </div>
   )

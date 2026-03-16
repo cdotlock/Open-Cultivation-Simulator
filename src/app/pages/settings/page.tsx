@@ -78,7 +78,7 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[calc(100vh-48px)] bg-[#F2EBD9] flex items-center justify-center font-family-song">
+      <div className="min-h-screen bg-[#F2EBD9] flex items-center justify-center font-family-song">
         <div className="text-[#5f4a28] text-lg">正在装载本地洞府设置...</div>
       </div>
     );
@@ -86,7 +86,7 @@ export default function SettingsPage() {
 
   return (
     <div
-      className="min-h-[calc(100vh-48px)] bg-[#F2EBD9] font-family-song text-[#2a2116]"
+      className="min-h-screen bg-[#F2EBD9] font-family-song text-[#2a2116]"
       style={{ backgroundImage: `url(${$img("bg")})`, backgroundBlendMode: "overlay" }}
     >
       <div className="mx-auto max-w-[720px] px-4 py-6">
@@ -94,14 +94,14 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between gap-3 border-b border-[#c9ae7f] px-5 py-4">
             <div>
               <div className="text-[26px]">洞府设置</div>
-              <div className="mt-1 text-[12px] tracking-[0.12em] text-[#7a6542]">LOCAL CONFIG</div>
+              <div className="mt-1 text-[12px] tracking-[0.12em] text-[#7a6542]">本地配置</div>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => router.push("/pages/settings/prompts")}
                 className="rounded-full border border-[#8e6a38] px-3 py-2 text-[12px] text-[#5f4525] hover:bg-[#f6ead3]"
               >
-                Prompt
+                提示词
               </button>
               <button
                 onClick={() => router.push("/")}
@@ -116,11 +116,11 @@ export default function SettingsPage() {
             <section className="rounded-[22px] border border-[#d5bf97] bg-[rgba(255,250,241,0.9)] p-4">
               <div className="mb-4 flex items-center justify-between">
                 <div className="text-[19px]">模型连接</div>
-                <div className="text-[11px] tracking-[0.18em] text-[#8d734d]">MODEL</div>
+                <div className="text-[11px] tracking-[0.18em] text-[#8d734d]">模型</div>
               </div>
               <div className="grid gap-4">
                 <label className="grid gap-2 text-sm">
-                  <span className="text-[#6a5535]">Provider</span>
+                  <span className="text-[#6a5535]">模型提供方</span>
                   <select
                     className="rounded-2xl border border-[#ccb181] bg-[#fff9ef] px-4 py-3 outline-none"
                     value={settings.provider}
@@ -142,7 +142,7 @@ export default function SettingsPage() {
                   />
                 </label>
                 <label className="grid gap-2 text-sm">
-                  <span className="text-[#6a5535]">Base URL</span>
+                  <span className="text-[#6a5535]">接口地址</span>
                   <input
                     className="rounded-2xl border border-[#ccb181] bg-[#fff9ef] px-4 py-3 outline-none"
                     value={settings.apiUrl}
@@ -162,7 +162,7 @@ export default function SettingsPage() {
 
               <div className="mt-6 mb-4 flex items-center justify-between">
                 <div className="text-[19px]">功能开关</div>
-                <div className="text-[11px] tracking-[0.18em] text-[#8d734d]">FEATURE</div>
+                <div className="text-[11px] tracking-[0.18em] text-[#8d734d]">功能</div>
               </div>
               <div className="grid gap-3 text-sm">
                 <label className="flex items-center justify-between rounded-2xl border border-[#d8c59f] bg-[#fffaf2] px-4 py-3">
@@ -202,11 +202,11 @@ export default function SettingsPage() {
             <section className="rounded-[22px] border border-[#d5bf97] bg-[rgba(255,250,241,0.78)] p-4">
               <div className="mb-4 flex items-center justify-between">
                 <div className="text-[19px]">当前状态</div>
-                <div className="text-[11px] tracking-[0.18em] text-[#8d734d]">STATUS</div>
+                <div className="text-[11px] tracking-[0.18em] text-[#8d734d]">状态</div>
               </div>
               <div className="grid gap-3 text-sm text-[#5a482f]">
                 <div className="flex items-center justify-between rounded-2xl border border-[#d8c59f] bg-[#fffaf2] px-4 py-3">
-                  <span>MCP Server</span>
+                  <span>MCP 服务</span>
                   <span className="text-[#87653a]">/mcp</span>
                 </div>
                 <div className="flex items-center justify-between rounded-2xl border border-[#d8c59f] bg-[#fffaf2] px-4 py-3">

@@ -4,7 +4,7 @@ import { useRecoilState } from "recoil"
 import { $img } from "@/utils"
 import { characterState } from "../store"
 import { CharacterDescriptionType, CharacterStatusType } from "@/interfaces/schemas"
-import { useEffect, useState } from "react"
+import { ReactNode, useEffect, useState } from "react"
 import { trackEvent, trackPageView, track, UmamiEvents } from "@/lib/analytics/umami"
 import useRoute from "../hooks/useRoute"
 import charConfig from "./const/char"
@@ -15,15 +15,31 @@ import { deleteCharacter } from '../actions/character/action';
 import { useUuid } from "../hooks/useLogin";
 import { FactionPortalCard } from "./faction/FactionPanels";
 
+function DetailSection({
+  titleSrc,
+  titleAlt,
+  children,
+}: {
+  titleSrc: string;
+  titleAlt: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="mt-5 rounded-[24px] border border-[rgba(242,228,195,0.14)] bg-[linear-gradient(180deg,rgba(92,53,36,0.56),rgba(52,31,20,0.62))] px-5 py-5 shadow-[0_18px_32px_rgba(22,12,8,0.12)]">
+      <img className="mx-auto w-[58%] max-w-[220px]" src={titleSrc} alt={titleAlt} />
+      <div className="mt-4 text-[13px] leading-[1.9] text-[#F2E7D0]">{children}</div>
+    </section>
+  );
+}
+
 export default function PageChar() {
   const { routerTo } = useRoute()
   const { startGame } = useStartGame()
   const [char, setChar] = useRecoilState(characterState)
-  const { shareCharacter } = useCharacterCrud()
+  const { handleCharacterSelect } = useCharacterCrud()
   const router = useRouter()
   const uuid = useUuid();
   const [deleteConfirm, setDeleteConfirm] = useState(false);
-  const { handleCharacterSelect } = useCharacterCrud();
 
   useEffect(() => {
     if (!char) {
@@ -99,9 +115,9 @@ export default function PageChar() {
 
   return (
     <div style={{ background: `left -6.65% / 15% url(${$img('mask-repect')}), ${config.bg1}` }}
-      className="relative font-family-song flex flex-col items-center w-full min-h-full text-white">
+      className="relative flex min-h-screen w-full flex-col items-center font-family-song text-white">
       <div className="relative w-full">
-        <div className="relative aspect-[0.96] w-full overflow-hidden">
+        <div className="relative aspect-[0.98] w-full overflow-hidden">
           <img className="absolute left-0 top-0 h-full w-full object-cover" src={cover} alt="cover" />
           <img className="absolute left-0 top-0 z-20 h-full w-full object-cover" src={config.backgroundImage} alt="newCharBg" />
           {!hasGeneratedCover && (
@@ -113,82 +129,68 @@ export default function PageChar() {
             </div>
           )}
 
-          <div className="absolute inset-x-[18px] bottom-[18px] z-30 rounded-[24px] border border-[rgba(242,228,195,0.22)] bg-[linear-gradient(180deg,rgba(87,48,31,0.82),rgba(45,25,16,0.88))] px-4 py-4 shadow-[0_18px_42px_rgba(20,10,6,0.28)]">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-[20px] leading-[1.05] text-[#FFF8ED]">{charInfo.角色名称}</div>
-                <div className="mt-[6px] text-[11px] leading-[1.55] text-[#F0E5CD]">{identity}</div>
-              </div>
-              <div className="shrink-0 rounded-full border border-[rgba(242,228,195,0.28)] px-3 py-[6px] text-[12px] text-[#E9E0B2]">
+          <div className="absolute inset-x-[18px] bottom-[18px] z-30 rounded-[26px] border border-[rgba(242,228,195,0.22)] bg-[linear-gradient(180deg,rgba(87,48,31,0.8),rgba(45,25,16,0.9))] px-4 py-5 shadow-[0_18px_42px_rgba(20,10,6,0.28)]">
+            <div className="flex flex-col items-center text-center">
+              <div className="rounded-full border border-[rgba(242,228,195,0.28)] px-4 py-[6px] text-[12px] text-[#E9E0B2]">
                 「{attr}」
               </div>
+              <div className="mt-3 text-[28px] leading-[1.02] text-[#FFF8ED]">{charInfo.角色名称}</div>
+              <div className="mt-[8px] max-w-[240px] text-[13px] leading-[1.7] text-[#F0E5CD]">{identity}</div>
             </div>
 
-            <div className="mt-3 grid grid-cols-3 gap-2 text-[#E9E0B2]">
-              <div className="rounded-[14px] bg-[rgba(255,247,229,0.08)] px-2 py-2">
-                <div className="flex items-center gap-1 text-[10px] text-[#F0E5CD]">
-                  <img className="h-[14px] w-[14px]" src={$img('newCharBg/attr1')} alt="魅力" />
-                  <span>魅力</span>
-                </div>
-                <div className="mt-[6px] text-[15px] leading-none">{charStatus.魅力}</div>
+            <div className="mt-4 grid grid-cols-3 gap-2 text-center text-[#E9E0B2]">
+              <div className="rounded-[16px] bg-[rgba(255,247,229,0.08)] px-2 py-3">
+                <div className="text-[10px] tracking-[0.14em] text-[#F0E5CD]">魅力</div>
+                <div className="mt-[8px] text-[20px] leading-none">{charStatus.魅力}</div>
               </div>
-              <div className="rounded-[14px] bg-[rgba(255,247,229,0.08)] px-2 py-2">
-                <div className="flex items-center gap-1 text-[10px] text-[#F0E5CD]">
-                  <img className="h-[14px] w-[14px]" src={$img('newCharBg/attr2')} alt="神识" />
-                  <span>神识</span>
-                </div>
-                <div className="mt-[6px] text-[15px] leading-none">{charStatus.神识}</div>
+              <div className="rounded-[16px] bg-[rgba(255,247,229,0.08)] px-2 py-3">
+                <div className="text-[10px] tracking-[0.14em] text-[#F0E5CD]">神识</div>
+                <div className="mt-[8px] text-[20px] leading-none">{charStatus.神识}</div>
               </div>
-              <div className="rounded-[14px] bg-[rgba(255,247,229,0.08)] px-2 py-2">
-                <div className="flex items-center gap-1 text-[10px] text-[#F0E5CD]">
-                  <img className="h-[14px] w-[14px]" src={$img('newCharBg/attr3')} alt="身手" />
-                  <span>身手</span>
-                </div>
-                <div className="mt-[6px] text-[15px] leading-none">{charStatus.身手}</div>
+              <div className="rounded-[16px] bg-[rgba(255,247,229,0.08)] px-2 py-3">
+                <div className="text-[10px] tracking-[0.14em] text-[#F0E5CD]">身手</div>
+                <div className="mt-[8px] text-[20px] leading-none">{charStatus.身手}</div>
               </div>
             </div>
 
-            <div className="mt-3 flex items-center gap-2 overflow-hidden rounded-[14px] bg-[linear-gradient(90deg,rgba(17,17,17,0.82),rgba(17,17,17,0.28))] px-2 py-2">
-              <div className="shrink-0 rounded-[10px] bg-[#D7C576] px-3 py-[6px] text-[11px] text-[#2b2116]">
-                {charStatus.等级}
+            <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[#F5E8D0]">
+              <div className="rounded-[16px] bg-[rgba(17,17,17,0.24)] px-2 py-3">
+                <div className="text-[10px] tracking-[0.14em] text-[#E7D9BF]">修为</div>
+                <div className="mt-[8px] break-keep text-[18px] leading-none text-[#E9E0B2]">{charStatus.等级}</div>
               </div>
-              <div className="grid flex-1 grid-cols-3 gap-2 text-[10px] text-[#F5E8D0]">
-                <div>
-                  <div className="text-[#E7D9BF]">突破</div>
-                  <div className="mt-[4px] text-[13px] leading-none text-[#E9E0B2]">{Math.round(charStatus.突破成功系数 * 100)}%</div>
-                </div>
-                <div>
-                  <div className="text-[#E7D9BF]">体魄</div>
-                  <div className="mt-[4px] text-[13px] leading-none text-[#E9E0B2]">{charStatus.体魄}</div>
-                </div>
-                <div>
-                  <div className="text-[#E7D9BF]">道心</div>
-                  <div className="mt-[4px] text-[13px] leading-none text-[#E9E0B2]">{charStatus.道心}</div>
-                </div>
+              <div className="rounded-[16px] bg-[rgba(17,17,17,0.24)] px-2 py-3">
+                <div className="text-[10px] tracking-[0.14em] text-[#E7D9BF]">突破</div>
+                <div className="mt-[8px] text-[20px] leading-none text-[#E9E0B2]">{Math.round(charStatus.突破成功系数 * 100)}%</div>
+              </div>
+              <div className="rounded-[16px] bg-[rgba(17,17,17,0.24)] px-2 py-3">
+                <div className="text-[10px] tracking-[0.14em] text-[#E7D9BF]">道心</div>
+                <div className="mt-[8px] text-[20px] leading-none text-[#E9E0B2]">{charStatus.道心}</div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="relative z-40 px-[20px] pb-[132px] pt-[20px] text-left text-[12px] leading-[1.9] text-[#F2E7D0]">
-          <img className="w-[68%] max-w-[220px]" src={$img('newCharBg/title1')} alt="" />
-          <div className="mt-3">{charInfo.人物背景}</div>
+        <div className="relative z-40 mx-auto w-full max-w-[420px] px-[18px] pb-[138px] pt-[20px]">
+          <DetailSection titleSrc={$img('newCharBg/title1')} titleAlt="人物背景">
+            {charInfo.人物背景}
+          </DetailSection>
 
-          <img className="mt-5 w-[68%] max-w-[220px]" src={$img('newCharBg/title2')} alt="" />
-          <div className="mt-3">{charInfo.核心任务}</div>
+          <DetailSection titleSrc={$img('newCharBg/title2')} titleAlt="核心任务">
+            {charInfo.核心任务}
+          </DetailSection>
 
-          <img className="mt-5 w-[68%] max-w-[220px]" src={$img('newCharBg/title3')} alt="" />
-          <div className="mt-3">{charInfo.外貌特征}</div>
+          <DetailSection titleSrc={$img('newCharBg/title3')} titleAlt="外貌特征">
+            {charInfo.外貌特征}
+          </DetailSection>
 
           {charInfo.人物关系 && (
-            <>
-              <img className="mt-5 w-[68%] max-w-[220px]" src={$img('newCharBg/title4')} alt="" />
-              <div className="mt-3 space-y-2">
+            <DetailSection titleSrc={$img('newCharBg/title4')} titleAlt="人物关系">
+              <div className="space-y-2 text-left">
                 {charInfo.人物关系.map((relation, index) => (
                   <div key={index}>· {relation}</div>
                 ))}
               </div>
-            </>
+            </DetailSection>
           )}
 
           {factionData ? (
@@ -197,34 +199,28 @@ export default function PageChar() {
             </div>
           ) : null}
 
-          <div className="sticky bottom-3 z-30 mt-6 flex justify-center bg-[linear-gradient(180deg,rgba(126,70,45,0),rgba(126,70,45,0.26)_26%,rgba(126,70,45,0.72)_100%)] px-4 py-4 backdrop-blur-[2px]">
-            <img
-              className="w-[68vw] max-w-[300px] cursor-pointer"
-              src={$img('newCharBg/btn-start')}
-              alt="开始修行"
+          <div className="sticky bottom-3 z-30 mt-6 flex justify-center bg-[linear-gradient(180deg,rgba(126,70,45,0),rgba(126,70,45,0.22)_24%,rgba(126,70,45,0.72)_100%)] px-4 py-4 backdrop-blur-[2px]">
+            <button
+              type="button"
               onClick={startGame}
-            />
+              className="flex min-h-[52px] items-center justify-center"
+              aria-label="开始修行"
+            >
+              <img
+                className="w-[72vw] max-w-[300px] cursor-pointer"
+                src={$img('newCharBg/btn-start')}
+                alt="开始修行"
+              />
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="absolute left-2 top-4 z-50 flex w-[34px] flex-col gap-3">
-        <img
-          src={$img('newCharBg/share')}
-          alt="分享"
-          className="h-[34px] w-[34px] cursor-pointer"
-          onClick={() => {
-            try {
-              track('web.char_profile.share_character.click');
-              trackEvent(UmamiEvents.角色导入, { action: 'share', character_id: char.id })
-            } catch {}
-            shareCharacter(char.id)
-          }}
-        />
-        <img
-          src={$img('newCharBg/history')}
-          alt="历史记录"
-          className="h-[34px] w-[34px] cursor-pointer"
+      <div className="absolute left-3 top-4 z-50 flex w-[40px] flex-col gap-[10px]">
+        <button
+          type="button"
+          className="flex h-[40px] w-[40px] items-center justify-center rounded-[14px] bg-[rgba(24,17,11,0.26)] backdrop-blur-[2px]"
+          aria-label="查看历史记录"
           onClick={() => {
             try {
               track('web.char_profile.history_record.click');
@@ -233,11 +229,18 @@ export default function PageChar() {
             handleCharacterSelect(char.id);
             router.push("/pages/history");
           }}
-        />
+        >
+          <img
+            src={$img('newCharBg/history')}
+            alt="历史记录"
+            className="h-[28px] w-[28px] cursor-pointer"
+          />
+        </button>
         <button
           type="button"
           onClick={openWorldPage}
-          className="flex h-[34px] w-[34px] items-center justify-center rounded-full border border-[rgba(255,242,212,0.58)] bg-[linear-gradient(145deg,rgba(126,93,48,0.96),rgba(41,29,18,0.92))] text-[12px] text-[#f7e8c4] shadow-[0_12px_22px_rgba(23,14,8,0.25)]"
+          className="flex h-[40px] w-[40px] items-center justify-center rounded-[14px] border border-[rgba(255,242,212,0.58)] bg-[linear-gradient(145deg,rgba(126,93,48,0.96),rgba(41,29,18,0.92))] text-[12px] text-[#f7e8c4] shadow-[0_12px_22px_rgba(23,14,8,0.25)]"
+          aria-label="打开势力视图"
         >
           势
         </button>

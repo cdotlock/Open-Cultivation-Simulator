@@ -117,7 +117,7 @@ export default function PageLayout() {
   }, [char?.id, gamePush, mounted, page, urlBootstrapped]);
 
   return (
-    <div className="flex flex-col items-center justify-start min-h-[calc(100vh-48px)] overflow-hidden bg-[#F2EBD9]">
+    <div className="flex min-h-screen flex-col items-center justify-start overflow-hidden bg-[#F2EBD9]">
       <div className="w-full relative">
         <Image
           unoptimized

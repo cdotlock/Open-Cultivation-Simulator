@@ -74,7 +74,7 @@ export default function WorldPage() {
 
   if (loading || !payload) {
     return (
-      <div className="flex min-h-[calc(100vh-48px)] items-center justify-center bg-[#F2EBD9] text-[#5f4525]">
+      <div className="flex min-h-screen items-center justify-center bg-[#F2EBD9] text-[#5f4525]">
         天下势力图正在铺陈...
       </div>
     );
@@ -86,7 +86,7 @@ export default function WorldPage() {
     payload.mapNodes[0];
 
   return (
-    <div className="min-h-[calc(100vh-48px)] bg-[#F2EBD9] pb-10">
+    <div className="min-h-screen bg-[#F2EBD9] pb-10">
       <div className="relative min-h-full w-full">
         <img className="pointer-events-none absolute left-0 top-0 w-full mix-blend-overlay" src={$img("bg")} alt="bg" />
 

@@ -150,7 +150,7 @@ export default function PageHistory() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-start overflow-hidden bg-[#F2EBD9]">
-      <div className="relative min-h-[calc(100vh-48px)] w-full">
+      <div className="relative min-h-screen w-full">
         <Image
           unoptimized
           width={200}

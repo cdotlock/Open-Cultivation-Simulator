@@ -187,7 +187,7 @@ export default function DeathPage() {
   return (
     <div
       style={{ background: `url(${$img('bg-end')}) center / cover no-repeat` }}
-      className="flex flex-col h-[calc(100vh-48px)] justify-center items-center z-50 font-family-song"
+      className="flex min-h-screen flex-col items-center justify-center z-50 font-family-song"
     >
       {pageState === "judgement" && <JudgementPage handleBirth={() => setPageState("rebirth")} />}
       {pageState === "rebirth" && <RerebirthPage />}
