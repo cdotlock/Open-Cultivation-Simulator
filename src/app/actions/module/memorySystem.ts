@@ -1,8 +1,6 @@
 import { GamePush } from "@/app/actions/generated/prisma";
 import { storyPushSchema, storyPushSchemaV0, summaryPushSchema, summaryPushSchemaV0 } from "@/interfaces/schemas";
-import Prompts from "@/utils/prompts";
 import { generateText } from "ai";
-import qwen from "@/utils/qwen";
 import { InputJsonValue } from "@prisma/client/runtime/library";
 import { ConfigService } from "@/utils/config-client";
 import { createModelFromConfig, getProviderOptions } from "@/utils/modelAdapter";
@@ -348,7 +346,7 @@ function buildGameContext(gamePushes: GamePush[]) {
             console.log("无法解析的推送数据格式:");
             console.log(pushData);
             throw new Error("游戏推送数据格式错误");
-        } catch (error) {
+        } catch {
             console.log("无法解析的推送数据格式:");
             console.log(pushData);
             throw new Error("游戏推送数据格式错误");

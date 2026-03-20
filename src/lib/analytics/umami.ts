@@ -7,8 +7,16 @@ export const UmamiEvents = new Proxy(
   },
 ) as Record<string, string>;
 
-export function track(_eventName: string, _payload?: Payload) {}
+export function track(eventName: string, payload?: Payload) {
+  void eventName;
+  void payload;
+}
 
-export function trackEvent(_eventName?: string, _payload?: Payload) {}
+export function trackEvent(eventName?: string, payload?: Payload) {
+  void eventName;
+  void payload;
+}
 
-export function trackPageView(_path: string) {}
+export function trackPageView(path: string) {
+  void path;
+}

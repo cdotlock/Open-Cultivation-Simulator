@@ -18,7 +18,8 @@ async function writeConfig(config: LocalAppConfig) {
 }
 
 function stripPromptModel(prompt: AIConfig) {
-  const { model: _model, ...rest } = prompt;
+  const { model, ...rest } = prompt;
+  void model;
   return rest;
 }
 

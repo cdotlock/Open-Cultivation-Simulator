@@ -1,4 +1,4 @@
-import { Character, GamePush } from "@/app/actions/generated/prisma";
+import { GamePush } from "@/app/actions/generated/prisma";
 import { CharacterStatusType, StoryPushType, difficultyLevels } from "@/interfaces/schemas";
 import { formatStatusWithMax } from "../character/constants";
 import { performCheck } from "./checkSystem";
@@ -83,13 +83,30 @@ export class OptionService {
         characterId: number,
         currentPushId: number
     ): Promise<GamePush | null> {
+        const completedPush = await prisma.gamePush.findFirst({
+            where: {
+                characterId,
+                isSummary: false,
+                choice,
+                fatherId: currentPushId,
+                finishType: 1,
+            },
+            orderBy: { id: 'asc' },
+        });
+
+        if (completedPush) {
+            return completedPush;
+        }
+
         return prisma.gamePush.findFirst({
             where: {
                 characterId,
                 isSummary: false,
                 choice,
-                fatherId: currentPushId
-            }
+                fatherId: currentPushId,
+                finishType: 0,
+            },
+            orderBy: { id: 'asc' },
         });
     }
 

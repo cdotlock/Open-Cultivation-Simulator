@@ -1,6 +1,6 @@
 import { useRecoilState } from 'recoil';
 import { loadingState, characterState } from '@/app/store'
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { useToast } from '../hooks/useToast';
 import { createCharacter } from '@/app/actions/character/action'
 import useRoute from '../hooks/useRoute';

@@ -1,4 +1,3 @@
-import Prompts from "@/utils/prompts";
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { ConfigService } from "@/utils/config-client";

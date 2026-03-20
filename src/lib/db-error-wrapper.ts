@@ -42,7 +42,7 @@ function handlePrismaError(error: unknown, operation: string, table?: string): D
 /**
  * 数据库操作错误处理包装器
  */
-export function withDatabaseErrorHandling<T>(
+export function withDatabaseErrorHandling(
   operation: string,
   table?: string
 ) {

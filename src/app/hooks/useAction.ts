@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { useToast } from './useToast';
 import * as characterActions from '../actions/character/action';
 import * as userActions from '../actions/user/action';
@@ -50,7 +50,6 @@ export function useAction() {
     );
   }, [withErrorHandler, uuid]);
 
-  // 使用 useMemo 确保返回的对象引用稳定
   return {
     getCharacterById,
     getCharacterListByUuid,

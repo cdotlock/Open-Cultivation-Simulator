@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Character, GamePush } from "@/app/actions/generated/prisma";
 import { CharacterStatusType, CharacterStatusSchema, StoryPushType, CharacterDescriptionSchema, storyPushSchema } from "@/interfaces/schemas";
 import { getCharacterById, getGamePushById } from "./query";

@@ -52,7 +52,9 @@ function applyVariables(template: string, variables: Record<string, unknown>) {
 }
 
 export class ConfigServiceClient {
-  constructor(_options: ConfigServiceOptions = {}) {}
+  constructor(options: ConfigServiceOptions = {}) {
+    void options;
+  }
 
   async getAllConfigs(params: QueryParams = {}) {
     const config = await getLocalAppConfig();

@@ -159,7 +159,7 @@ pnpm assets:sync
 - This edition is designed for local play, not multi-user deployment.
 - Model keys are not bundled. You must configure your own provider credentials.
 - Image generation is optional and disabled by default.
-- `pnpm build` currently still has a known route collection issue around `/pages/avatar`; day-to-day development should use `pnpm dev`.
+- `pnpm build` currently succeeds in the open-source local stack; day-to-day development is still more convenient with `pnpm dev`.
 
 ## Contributing
 

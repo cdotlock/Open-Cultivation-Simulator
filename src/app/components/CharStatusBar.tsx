@@ -2,7 +2,7 @@ import { CharacterStatusTypeWithMax } from "@/app/actions/character/constants";
 import { StatusDelta } from "@/interfaces/dto";
 import { $img } from "@/utils";
 import { getCharStatusUrl } from "@/interfaces/const";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * 角色状态栏 - 游戏推进，历史回归

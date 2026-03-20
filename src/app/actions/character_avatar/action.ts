@@ -103,7 +103,7 @@ export async function generateDefaultCharacterAvatar(
 }
 
 
-async function processAvatarTask(taskId: string, prompt: string, characterId: number, userUuid: string) {
+async function processAvatarTask(taskId: string, prompt: string, characterId: number) {
     try {
         await prisma.avatarTask.update({ where: { id: taskId }, data: { status: 'PROCESSING' } });
 
@@ -244,7 +244,7 @@ export async function generateCharacterAvatar(characterId: number, prompt: strin
     });
 
     // Don't await this, let it run in the background
-    processAvatarTask(newTask.id, prompt, characterId, userUuid);
+    processAvatarTask(newTask.id, prompt, characterId);
 
     return { isSuccess: true, message: "任务创建成功！", taskId: newTask.id };
 }

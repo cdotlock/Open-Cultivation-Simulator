@@ -102,7 +102,6 @@ export async function stableGenerateObject<T>({
             const llmRepairedResult = await llmRepairObject({
               model,
               schema,
-              originalPrompt: prompt,
               errorMessage: error?.message || '未知错误',
               brokenOutput: repairedText || text, // 使用 jsonrepair 修复后的文本或原文本
               maxTokens,
@@ -187,7 +186,6 @@ export async function stableGenerateObject<T>({
 async function llmRepairObject<T>({
   model,
   schema,
-  originalPrompt,
   errorMessage,
   brokenOutput,
   maxTokens,
@@ -195,7 +193,6 @@ async function llmRepairObject<T>({
 }: {
   model: Parameters<typeof generateObject>[0]['model'];
   schema: z.ZodSchema<T>;
-  originalPrompt: string;
   errorMessage: string;
   brokenOutput?: string | null;
   maxTokens?: number;

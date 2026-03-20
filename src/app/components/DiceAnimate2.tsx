@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { GameOptionType } from '@/interfaces';
 import { difficultyLevelMap, getDiceImage } from '@/interfaces/const';
 import { $img } from '@/utils';
-import { diceImages } from '@/interfaces/const';
 
 const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) => {
   const option = props.option;
@@ -13,15 +12,6 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
 
   // 计算基础骰子值
   const baseDiceValue = (option?.骰子?.[0] || 0) + (option?.骰子?.[1] || 0);
-
-  // 从变动原因中解析额外加成
-  const extraPointsFromReasons = option?.变动原因?.reduce((sum, reason) => {
-    // 捕获字符串中的所有正负数值（例如“能力修正-1”、“天道眷顾+1”）
-    const matches = reason.match(/[+-]\d+/g);
-    if (!matches) return sum;
-    const delta = matches.reduce((acc, cur) => acc + Number(cur), 0);
-    return sum + (Number.isNaN(delta) ? 0 : delta);
-  }, 0) || 0;
 
   const appliedModifier =  option?.修正值 || 0;
 

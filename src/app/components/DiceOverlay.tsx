@@ -1,6 +1,5 @@
 "use client";
 import React from 'react';
-import { difficultyLevels } from '@/interfaces/schemas';
 
 type DiceOverlayProps = {
   show: boolean;
@@ -161,4 +160,3 @@ export const DiceOverlay: React.FC<DiceOverlayProps> = ({ show, rollingDice, fin
 };
 
 export default DiceOverlay;
-

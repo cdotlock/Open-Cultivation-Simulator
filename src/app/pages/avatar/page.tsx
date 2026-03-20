@@ -155,7 +155,7 @@ const AvatarContainer = ({ characterId }: { characterId: number }) => {
           // 自动选择最新生成的头像
           if (queryResult.result) {
             setAvatarList(prev => {
-              return prev.map((item, i) => ({ 
+              return prev.map((item) => ({
                 ...item, 
                 selected: item.id === queryResult.result?.id 
               }))
@@ -235,7 +235,7 @@ const AvatarContainer = ({ characterId }: { characterId: number }) => {
         setError("选择头像失败")
       }
     }
-  }, [avatarList, characterId])
+  }, [avatarList, characterId, handleCharacterSelect, router, showToast])
 
   if (loading) {
     return (

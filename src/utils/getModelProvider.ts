@@ -15,7 +15,7 @@ type JSONValue =
 
 function cleanJSON(obj: Record<string, any>): Record<string, JSONValue> {
   return Object.fromEntries(
-    Object.entries(obj).filter(([_, value]) => value !== undefined)
+    Object.entries(obj).filter(([, value]) => value !== undefined)
   );
 }
 

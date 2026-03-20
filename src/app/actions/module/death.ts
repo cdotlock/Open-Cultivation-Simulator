@@ -1,7 +1,6 @@
 import { CharacterStatusType, StoryPushType } from "@/interfaces";
 import { ConfigService } from "@/utils/config-client";
 import { createModelFromConfig, getProviderOptions } from "@/utils/modelAdapter";
-import z from "zod";
 import { Character } from "../generated/prisma";
 import { generateText } from "ai";
 import prisma from "@/lib/prisma";

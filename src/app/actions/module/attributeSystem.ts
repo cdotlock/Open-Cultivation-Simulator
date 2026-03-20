@@ -119,7 +119,7 @@ function calculateAttributeChange(attribute: string, currentValue: number, direc
         return 0; // 其他属性不处理全部减少
     }
 
-    const { 基础值, 变化百分比 } = getChangeValueByDegree(degree, attribute);
+    const { 基础值 } = getChangeValueByDegree(degree, attribute);
 
     // 获取随机基础值
     const baseValue = attribute === "道心"
@@ -204,4 +204,3 @@ function getChangeValueByDegree(degree: string, attribute: string): { 基础值:
             return { 基础值: [0, 0], 变化百分比: 0 };
     }
 }
-

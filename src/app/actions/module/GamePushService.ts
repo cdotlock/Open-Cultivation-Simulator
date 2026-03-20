@@ -1,16 +1,14 @@
 import { Character, GamePush } from "@/app/actions/generated/prisma";
-import { CharacterStatusType, StoryPushType, difficultyLevels, CharacterStatusSchema, storyPushSchema, GameOptionType } from "@/interfaces/schemas";
+import { CharacterStatusType, StoryPushType, storyPushSchema, GameOptionType } from "@/interfaces/schemas";
 import { StatusDelta } from "@/interfaces/dto";
-import { formatStatusForLLM, formatStatusWithMax } from "../character/constants";
-import { changeAttr, calculateStatusDelta } from "./attributeSystem";
+import { formatStatusForLLM } from "../character/constants";
+import { changeAttr } from "./attributeSystem";
 import { compressMemoryIfNeeded } from "./memorySystem";
 import { handleActionError } from "@/lib/server-error-handler";
 import { ConfigService } from "@/utils/config-client";
 import { createModelFromConfig, getProviderOptions } from "@/utils/modelAdapter";
 import { stableGenerateObject } from "@/utils/stableGenerateObject";
 import { prisma } from '@/lib/prisma';
-import { GamePushResponse } from "@/interfaces/dto";
-import { handleCharacterDeath } from "./death";
 import { attemptBreakthrough } from "../character/action";
 import { extendMemory } from "@/utils/extendMemory";
 import MemoryRules from "@/config/MemoryRules";
@@ -24,6 +22,7 @@ import {
 } from "./factionSystem";
 
 export class GamePushService {
+    private static preloadTasks = new Map<string, Promise<GamePush[]>>();
     private preloadService: PreloadService;
     private optionService: OptionService;
 
@@ -42,7 +41,8 @@ export class GamePushService {
         success?: boolean,
         factionContext?: Record<string, string>
     ) {
-        const { 初始属性, ...restDescription } = characterDescription;
+        const restDescription = { ...characterDescription };
+        delete restDescription.初始属性;
 
         const push = await prisma.gamePush.create({
             data: {
@@ -243,26 +243,19 @@ export class GamePushService {
         currentPush: GamePush,
         currentStatus: CharacterStatusType
     ): Promise<GamePush[]> {
+        const preloadKey = this.buildPreloadKey(character.id, currentPush.id);
+        const existingTask = GamePushService.preloadTasks.get(preloadKey);
+
+        if (existingTask) {
+            console.log(`[preloadNextOptions] 复用进行中的预加载: ${preloadKey}`);
+            return existingTask;
+        }
+
+        const preloadTask = this.runPreloadNextOptions(character, currentPush, currentStatus);
+        GamePushService.preloadTasks.set(preloadKey, preloadTask);
+
         try {
-            console.log(`[正在进行预加载] ${currentPush.id}`);
-            
-            // 直接使用currentPush的选项数据，因为之前已经通过addPrerollToGamePush处理过了
-            const currentInfo = currentPush.info as StoryPushType;
-            const prerolledOptions = currentInfo.节点要素.剧情要素.玩家选项 as OptionWithPreroll[];
-
-            const gamePushes = await Promise.all(
-                prerolledOptions.map(async (option) => {
-                    const result = await this.pushGame(
-                        character,
-                        currentStatus,
-                        option.选项描述,
-                        option.是否成功!
-                    );
-                    return result.push;
-                })
-            );
-
-            return gamePushes;
+            return await preloadTask;
         } catch (error) {
             await handleActionError(
                 error instanceof Error ? error : new Error(String(error)),
@@ -270,7 +263,105 @@ export class GamePushService {
                 `characterId:${character.id}`
             );
             throw error;
+        } finally {
+            if (GamePushService.preloadTasks.get(preloadKey) === preloadTask) {
+                GamePushService.preloadTasks.delete(preloadKey);
+            }
         }
+    }
+
+    private buildPreloadKey(characterId: number, currentPushId: number): string {
+        return `${characterId}:${currentPushId}`;
+    }
+
+    private async runPreloadNextOptions(
+        character: Character,
+        currentPush: GamePush,
+        currentStatus: CharacterStatusType
+    ): Promise<GamePush[]> {
+        console.log(`[正在进行预加载] ${currentPush.id}`);
+
+        const currentInfo = currentPush.info as StoryPushType;
+        const prerolledOptions = currentInfo.节点要素.剧情要素.玩家选项 as OptionWithPreroll[] | undefined;
+
+        if (!prerolledOptions?.length) {
+            return [];
+        }
+
+        const optionChoices = prerolledOptions
+            .map((option) => option.选项描述)
+            .filter((choice): choice is string => Boolean(choice));
+
+        const existingPushes = optionChoices.length
+            ? await prisma.gamePush.findMany({
+                where: {
+                    characterId: character.id,
+                    fatherId: currentPush.id,
+                    choice: { in: optionChoices },
+                },
+                orderBy: { id: 'asc' },
+            })
+            : [];
+
+        const existingByChoice = new Map<string, GamePush>();
+        existingPushes.forEach((push) => {
+            if (push.choice && !existingByChoice.has(push.choice)) {
+                existingByChoice.set(push.choice, push);
+            }
+        });
+
+        const settledPushes = await Promise.allSettled(
+            prerolledOptions.map(async (option) => {
+                if (!option.选项描述 || typeof option.是否成功 !== 'boolean') {
+                    console.warn(`[preloadNextOptions] 跳过无效选项: ${option.选项描述 || 'unknown'}`);
+                    return null;
+                }
+
+                const cachedPush = existingByChoice.get(option.选项描述);
+                if (cachedPush) {
+                    console.log(`[preloadNextOptions] 复用已有分支: ${option.选项描述} -> ${cachedPush.id}`);
+                    return cachedPush;
+                }
+
+                const existingPush = await prisma.gamePush.findFirst({
+                    where: {
+                        characterId: character.id,
+                        fatherId: currentPush.id,
+                        choice: option.选项描述,
+                    },
+                    orderBy: { id: 'asc' },
+                });
+
+                if (existingPush) {
+                    console.log(`[preloadNextOptions] 复用并发期间已创建分支: ${option.选项描述} -> ${existingPush.id}`);
+                    existingByChoice.set(option.选项描述, existingPush);
+                    return existingPush;
+                }
+
+                const result = await this.pushGame(
+                    character,
+                    currentStatus,
+                    option.选项描述,
+                    option.是否成功
+                );
+
+                existingByChoice.set(option.选项描述, result.push);
+                return result.push;
+            })
+        );
+
+        const rejected = settledPushes.filter(
+            (result): result is PromiseRejectedResult => result.status === 'rejected'
+        );
+
+        rejected.forEach((result) => {
+            console.error('[preloadNextOptions] 选项预加载失败:', result.reason);
+        });
+
+        return settledPushes
+            .filter((result): result is PromiseFulfilledResult<GamePush | null> => result.status === 'fulfilled')
+            .map((result) => result.value)
+            .filter((push): push is GamePush => push !== null);
     }
 
     async saveStorySegment(gamePush: GamePush, characterId: number) {
