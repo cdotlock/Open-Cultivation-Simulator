@@ -93,6 +93,8 @@ const DAO_LU_VIBES = [
   "嘴硬心软",
   "狐系",
   "师姐气",
+  "御姐",
+  "大姐姐",
   "知性",
   "黏人",
   "危险又体面",
@@ -100,6 +102,13 @@ const DAO_LU_VIBES = [
   "酒气漂亮",
   "懒散贵气",
   "艳而不俗",
+  "甜辣",
+  "纯欲",
+  "妖女气",
+  "魅魔感",
+  "圣女脸",
+  "丰润",
+  "肉感慵懒",
   "会撩",
   "薄情脸",
 ] as const;
@@ -132,6 +141,14 @@ const DAO_LYU_ADULT_TRAIT_POOL = [
   "嘴上正经，贴近时却很会磨人",
   "会若无其事地替你拢好外袍",
   "明明会撩，还总装成无心",
+  "胸无大志，俯身替你看伤时很会逼你先移开眼",
+  "魅魔感重，明明在说正事却总像贴着耳根落火",
+  "揽腰扶人时手心总停得比规矩更久",
+  "披着清圣面相，近身时却坏得刚刚好",
+  "坐得离你不远，却总会把裙影和香气一起压过来",
+  "故意把领口收慢半拍，再若无其事地看你乱没乱",
+  "会拿腿侧和腰线这种小事逼你先错开目光",
+  "看你嘴硬时最爱俯身贴近，像故意让你退无可退",
 ] as const;
 
 const DAO_LYU_JOKE_TRAIT_POOL = [
@@ -150,7 +167,52 @@ const DAO_LYU_DEFAULT_SCENES = [
   "秘境",
   "喝酒",
   "双修",
+  "屏风",
+  "更衣",
+  "榻边",
+  "温泉",
+  "沐发",
 ] as const;
+
+function deriveDaoLyuAdultStyle(wish: BondWishStructType, rawWish: string) {
+  const text = `${rawWish} ${wish.desiredVibe.join(" ")} ${wish.desiredTraits.join(" ")}`;
+  if (/(魅魔|妖女|色系|纯欲|勾人|坏女人)/.test(text)) {
+    return "魅魔拉扯";
+  }
+  if (/(胸无大志|大胸|丰乳|丰润|丰腴|肉感|蜜桃)/.test(text)) {
+    return "丰润压迫";
+  }
+  if (/(圣女|清纯|反差|端庄|仙子脸)/.test(text)) {
+    return "圣洁反差";
+  }
+  if (/(御姐|姐姐|大姐姐|师姐|女王|年上)/.test(text)) {
+    return "御姐拿捏";
+  }
+  if (/(腿精|腰精|长腿|细腰|锁骨)/.test(text)) {
+    return "身段杀伤";
+  }
+  return wish.adultTone ? "暧昧压近" : "克制";
+}
+
+function buildDaoLyuAppearanceLine(vibe: string[], rawWish: string, wish: BondWishStructType) {
+  if (!wish.adultTone) {
+    return `${pick(vibe)}的气质先落在眼里，衣襟收得利落，眸色沉静，却总在看向你时多停一瞬。`;
+  }
+
+  const adultStyle = deriveDaoLyuAdultStyle(wish, rawWish);
+  const styleDetail = adultStyle === "魅魔拉扯"
+    ? "眉眼与唇线都带着一点犯规的勾火，连正经看人都像故意先撩一寸。"
+    : adultStyle === "丰润压迫"
+      ? "身段丰润得过分，曲线被衣料收住大半，却仍压得人很难不多看一眼。"
+      : adultStyle === "圣洁反差"
+        ? "面相清圣得像不该沾尘，偏偏靠近时那点坏心就从眼尾慢慢漏出来。"
+        : adultStyle === "御姐拿捏"
+          ? "举手投足都像在从容拿捏距离，压迫感和照顾欲一起落下来。"
+          : adultStyle === "身段杀伤"
+            ? "腰线与腿影都收得太漂亮，光是走近一步就足够扰乱人的呼吸。"
+            : "衣襟收得利落，呼吸和视线却总像故意压得更近一些。";
+  return `${pick(vibe)}的气质先落在眼里，${styleDetail}`;
+}
 
 const DAO_LU_EVENT_BLUEPRINTS = [
   {
@@ -334,7 +396,7 @@ const DAO_LYU_EVENT_TREE: EventTreeNode = {
           label: "贴近试温",
           weight: 2,
           requiresAdultTone: true,
-          preferredScenes: ["守灯", "并肩", "双修", "喝酒"],
+          preferredScenes: ["守灯", "并肩", "双修", "喝酒", "屏风", "更衣", "温泉", "沐发"],
           preferredMoods: ["靠近", "试探", "留心"],
           blueprints: [
             {
@@ -365,6 +427,36 @@ const DAO_LYU_EVENT_TREE: EventTreeNode = {
               destinyDelta: 1,
               requiresAdultTone: true,
               preferredScenes: ["双修", "守灯"],
+            },
+            {
+              key: "screen-belt-knot",
+              title: "屏风后替你系好衣带",
+              summary: "你衣带在屏风后松了半寸，对方走近替你系回去，指节碰过腰侧时并不慌，反倒像故意看你先乱几分。",
+              storyHook: "本回合适合安排屏风、更衣或临出门前的极短照料动作，让道侣借系衣带、扶袍角把距离压到很暧昧的一线。",
+              mood: "压近",
+              relationshipSummary: "你们已经开始用很短的贴身动作试探彼此的底线，谁都没有先退。",
+              memorySummary: "屏风后，对方替你系回衣带，指节贴过腰侧时停得刚刚够人记很久。",
+              intimacyDelta: 3,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 0,
+              requiresAdultTone: true,
+              preferredScenes: ["屏风", "更衣"],
+            },
+            {
+              key: "wet-hair-scent",
+              title: "沐发后水汽绕得太近",
+              summary: "你发尾未干，对方替你拢住湿发，水汽和香气一起压到肩侧，说是怕你受凉，距离却明显近得过界。",
+              storyHook: "本回合适合把道侣写进温泉后、沐发后或雨后短暂停留的场景，用拢发、擦水和气息交错做成人向拉扯。",
+              mood: "缠人",
+              relationshipSummary: "这段关系已经开始借照顾的名义把身体距离压得很近。",
+              memorySummary: "对方替你拢住湿发，水汽与呼吸一起落到肩侧，近得让人很难装作无事。",
+              intimacyDelta: 3,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+              requiresAdultTone: true,
+              preferredScenes: ["温泉", "沐发"],
             },
           ],
         },
@@ -476,7 +568,7 @@ const DAO_LYU_EVENT_TREE: EventTreeNode = {
           label: "克制擦边",
           weight: 2,
           requiresAdultTone: true,
-          preferredScenes: ["飞舟", "双修", "夜谈", "喝酒"],
+          preferredScenes: ["飞舟", "双修", "夜谈", "喝酒", "屏风", "更衣", "榻边", "温泉"],
           preferredMoods: ["撩拨", "贴近", "缱绻", "吃味"],
           blueprints: [
             {
@@ -521,6 +613,61 @@ const DAO_LYU_EVENT_TREE: EventTreeNode = {
               loyaltyDelta: 0,
               destinyDelta: 0,
               requiresAdultTone: true,
+            },
+          ],
+        },
+        {
+          key: "mid-adult-flair",
+          label: "风情压境",
+          weight: 2,
+          requiresAdultTone: true,
+          preferredScenes: ["屏风", "更衣", "榻边", "温泉", "沐发"],
+          preferredMoods: ["压近", "缱绻", "炽热", "贴近"],
+          blueprints: [
+            {
+              key: "screen-shadow-press",
+              title: "屏风半掩时还敢压近",
+              summary: "屏风半掩，对方分明能站远些，却偏偏一步逼近替你理平袍角，目光顺着你的反应慢吞吞地落下来。",
+              storyHook: "本回合适合用屏风、更衣或出门前的一息空档，把道侣写成故意不肯退开的人，用目光和手上动作制造成人向压迫感。",
+              mood: "压近",
+              relationshipSummary: "你们之间的暧昧已经从试探走到明晃晃地互相施压，只差谁先认输。",
+              memorySummary: "屏风半掩时，对方替你理袍却迟迟不退，目光把那一息暧昧压得很满。",
+              intimacyDelta: 3,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+              requiresAdultTone: true,
+              preferredScenes: ["屏风", "更衣"],
+            },
+            {
+              key: "bedside-hair-dry",
+              title: "榻边擦发时膝侧抵住",
+              summary: "你坐在榻边，对方替你擦发，膝侧若有若无抵住一点，动作温得很，偏偏比任何情话都更让人乱。",
+              storyHook: "本回合适合安排榻边休整、雨后擦发或闭关前短暂停留，用擦发、膝侧、发尾这些细节把色气堆出来。",
+              mood: "缱绻",
+              relationshipSummary: "这段关系已经足够熟，熟到连最日常的照顾都能被做得过分撩人。",
+              memorySummary: "榻边擦发时，对方膝侧轻轻抵住，动作温柔，暧昧却一点没收。",
+              intimacyDelta: 3,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+              requiresAdultTone: true,
+              preferredScenes: ["榻边", "沐发"],
+            },
+            {
+              key: "hot-spring-waist-steady",
+              title: "温泉雾里扶你时手没撤",
+              summary: "池边石滑，你刚一晃，对方就揽住你腰把人扶稳，话说得平静，掌心却一直没急着撤开。",
+              storyHook: "本回合适合把温泉、水汽或湿滑地面当作借口，让道侣用揽腰、扶稳和近距离低声说话把关系温度直接抬起来。",
+              mood: "贴近",
+              relationshipSummary: "你们已经能把身体上的照顾做得几乎没有多余遮掩。",
+              memorySummary: "温泉雾气里，对方揽腰把你扶稳，掌心停得太久，像故意给你乱心的时间。",
+              intimacyDelta: 3,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+              requiresAdultTone: true,
+              preferredScenes: ["温泉"],
             },
           ],
         },
@@ -626,7 +773,7 @@ const DAO_LYU_EVENT_TREE: EventTreeNode = {
           label: "成熟拉扯",
           weight: 2,
           requiresAdultTone: true,
-          preferredScenes: ["双修", "守灯", "喝酒", "夜谈"],
+          preferredScenes: ["双修", "守灯", "喝酒", "夜谈", "榻边", "更衣", "温泉", "沐发"],
           preferredMoods: ["缱绻", "相守", "贴近"],
           blueprints: [
             {
@@ -657,6 +804,36 @@ const DAO_LYU_EVENT_TREE: EventTreeNode = {
               destinyDelta: 1,
               requiresAdultTone: true,
               preferredScenes: ["喝酒"],
+            },
+            {
+              key: "waist-draw-no-hide",
+              title: "揽腰把你带回自己身侧",
+              summary: "你刚想从喧闹里退开，对方就顺手揽住你的腰把人带回自己身侧，动作熟得像早把这个位置留给了你。",
+              storyHook: "本回合适合把成熟道侣写得更笃定一些，用揽腰、带回身侧、替你占位这种动作直接表现主权感和色气。",
+              mood: "占位",
+              relationshipSummary: "你们之间已经不是试探谁先靠近，而是谁更自然地把对方收回自己身边。",
+              memorySummary: "你刚想退开，对方就揽腰把你带回身侧，动作熟得像天经地义。",
+              intimacyDelta: 3,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 2,
+              requiresAdultTone: true,
+              preferredScenes: ["夜谈", "飞舟", "榻边"],
+            },
+            {
+              key: "morning-belt-tie",
+              title: "晨起替你系衣时离得太近",
+              summary: "晨起时你还带着倦，对方俯身替你系好衣带，嗓音低得像怕惊了你，偏偏人却始终没离远半分。",
+              storyHook: "本回合适合在大战后、闭关后或晨起短场景里写道侣替主角整理衣襟、束发或系带，用熟门熟路的亲密拉高成熟期色气。",
+              mood: "缱绻",
+              relationshipSummary: "你们的亲密已经渗进了最日常的动作里，连晨起整理衣冠都带着热度。",
+              memorySummary: "晨起时，对方俯身替你系衣，离得太近，像把整份熟稔都压进了那一息里。",
+              intimacyDelta: 3,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+              requiresAdultTone: true,
+              preferredScenes: ["更衣", "榻边"],
             },
           ],
         },
@@ -1356,13 +1533,89 @@ function inferPreferredGender(wishText: string) {
 }
 
 function inferWishStructHeuristically(wishText: string): BondWishStructType {
-  const vibeKeywords = ["清冷", "温柔", "师姐", "师兄", "狐系", "黏人", "知性", "危险", "体贴", "嘴硬心软", "坏心眼", "会撩", "艳", "贵气"];
-  const traitKeywords = ["会照顾人", "嘴硬心软", "会撩", "爱吃醋", "稳重", "聪明", "毒舌", "乖", "疯", "护短", "会哄", "偏心", "勾人", "坏"];
-  const sceneKeywords = ["并肩", "雨夜", "喝酒", "下棋", "双修", "夜谈", "秘境", "飞舟", "守灯", "并行", "上药", "贴肩", "理衣领"];
+  const vibeKeywords = [
+    "清冷",
+    "温柔",
+    "师姐",
+    "师兄",
+    "狐系",
+    "黏人",
+    "知性",
+    "危险",
+    "体贴",
+    "嘴硬心软",
+    "坏心眼",
+    "会撩",
+    "艳",
+    "贵气",
+    "御姐",
+    "大姐姐",
+    "甜辣",
+    "纯欲",
+    "妖女",
+    "魅魔",
+    "圣女",
+    "丰润",
+    "肉感",
+    "坏女人",
+  ];
+  const traitKeywords = [
+    "会照顾人",
+    "嘴硬心软",
+    "会撩",
+    "爱吃醋",
+    "稳重",
+    "聪明",
+    "毒舌",
+    "乖",
+    "疯",
+    "护短",
+    "会哄",
+    "偏心",
+    "勾人",
+    "坏",
+    "胸无大志",
+    "魅魔感",
+    "大姐姐",
+    "会拿捏",
+    "会揽腰",
+    "会压近",
+    "反差",
+    "清纯脸",
+    "坏女人",
+    "腿精",
+    "腰精",
+    "丰润",
+    "肉感",
+  ];
+  const sceneKeywords = [
+    "并肩",
+    "雨夜",
+    "喝酒",
+    "下棋",
+    "双修",
+    "夜谈",
+    "秘境",
+    "飞舟",
+    "守灯",
+    "并行",
+    "上药",
+    "贴肩",
+    "理衣领",
+    "温泉",
+    "屏风",
+    "更衣",
+    "榻边",
+    "沐发",
+    "耳边",
+    "揽腰",
+    "屏风后",
+    "换药",
+  ];
   const desiredVibe = vibeKeywords.filter((item) => wishText.includes(item));
   const desiredTraits = traitKeywords.filter((item) => wishText.includes(item));
   const desiredScenes = sceneKeywords.filter((item) => wishText.includes(item));
-  const adultTone = /(擦边|暧昧|会撩|黏人|身材|诱|勾人|撩|色气|腿|腰|锁骨|贴贴|亲近点|压近|会亲|会抱|耳边|低声|撩人)/.test(wishText);
+  const adultTone = /(擦边|暧昧|会撩|黏人|身材|诱|勾人|撩|色气|腿|腰|锁骨|贴贴|亲近点|压近|会亲|会抱|耳边|低声|撩人|魅魔|胸无大志|大胸|丰润|丰腴|肉感|色系|纯欲|坏女人|腿精|腰精|揽腰|榻边|更衣|屏风|温泉)/.test(wishText);
   const jokeTolerance = /(整活|恶搞|沙雕|抽象|玩梗|搞笑|活宝)/.test(wishText)
     ? "高"
     : /(正经|别太闹|安静)/.test(wishText)
@@ -1408,6 +1661,7 @@ function buildDaoLyuActorDraft(level: CultivationLevel, wish: BondWishStructType
   const gender = inferPreferredGender(rawWish);
   const vibe = wish.desiredVibe.length ? wish.desiredVibe : sampleUnique(DAO_LU_VIBES, 2);
   const desiredScenes = wish.desiredScenes.length ? wish.desiredScenes : sampleUnique(DAO_LYU_DEFAULT_SCENES, 2);
+  const adultStyle = deriveDaoLyuAdultStyle(wish, rawWish);
   const traitPool = [
     ...DAO_LYU_BASE_TRAIT_POOL,
     ...(wish.adultTone ? DAO_LYU_ADULT_TRAIT_POOL : []),
@@ -1420,6 +1674,12 @@ function buildDaoLyuActorDraft(level: CultivationLevel, wish: BondWishStructType
     ? "字少，却总能在你最狼狈时把话说到心口上。"
     : vibe.includes("温柔")
       ? "声线温缓，像是先替你想过了退路。"
+      : wish.adultTone && adultStyle === "魅魔拉扯"
+        ? "尾音天生带勾，明明在说正事，也像故意把你往更近处引。"
+        : wish.adultTone && adultStyle === "御姐拿捏"
+          ? "说话像拿着分寸和绳子，既会哄，也会把你按在她划出的界线里。"
+          : wish.adultTone && adultStyle === "丰润压迫"
+            ? "嗓音不急不缓，靠近时却总带着一种不讲理的压迫感。"
       : wish.adultTone
         ? "说话时声线总压得很低，像故意留一线余地给你心乱。"
         : "表面漫不经心，真正开口时分寸拿得很准。";
@@ -1436,14 +1696,13 @@ function buildDaoLyuActorDraft(level: CultivationLevel, wish: BondWishStructType
     gender,
     age: 20 + Math.floor(Math.random() * 12),
     realm: level,
-    appearance: wish.adultTone
-      ? `${pick(vibe)}的气质先落在眼里，衣襟收得利落，眸色沉静，看向你时却总像故意多停半息。`
-      : `${pick(vibe)}的气质先落在眼里，衣襟收得利落，眸色沉静，却总在看向你时多停一瞬。`,
+    appearance: buildDaoLyuAppearanceLine(vibe as string[], rawWish, wish),
     originSummary: `你曾许愿想遇到一个${compactText(rawWish, "能与你并肩走很远的人")}。此人像是顺着这份愿望，被因果慢慢推到了你面前。`,
     personalityTags: vibe,
     publicTraits,
     hiddenTraits: [
       wish.adultTone ? "暧昧阈值:高" : "暧昧阈值:低",
+      `成人风格:${adultStyle}`,
       `整活耐受:${wish.jokeTolerance}`,
       ...desiredScenes.slice(0, 2).map((scene) => `偏好场景:${scene}`),
       wish.adultTone ? "擅长在安静处把距离压近" : "把情绪藏得比刀锋还深",
@@ -2382,9 +2641,11 @@ export async function dismissDiscipleCandidate(characterId: number, bondId: numb
 
 function buildFallbackChatResult(message: string, bond: CharacterBondView): BondChatResult {
   const trimmed = compactText(message, "你没有说出口的话");
-  const daoLyuReply = bond.actor.adultContentEnabled && (bond.progressStage === "相偎" || bond.progressStage === "缠心" || bond.progressStage === "同契")
-    ? `${bond.actor.name}看了你一会儿，嗓音压得很低：“${trimmed.slice(0, 20)}……行。你别再一个人硬扛，我会先把你按稳，再陪你把后面的路走完。”`
-    : `${bond.actor.name}听完后沉了片刻，低声道：“${trimmed.slice(0, 22)}……我记住了。你若真要走这一步，我陪着你。”`;
+  const daoLyuReply = bond.actor.adultContentEnabled && bond.progressStage === "同契"
+    ? `${bond.actor.name}眸光在你脸上停了许久，顺手把你往近处带了一寸，嗓音低得发烫：“${trimmed.slice(0, 20)}……好。你既然敢撩到我跟前，就别想再一个人退回去。”`
+    : bond.actor.adultContentEnabled && (bond.progressStage === "相偎" || bond.progressStage === "缠心")
+      ? `${bond.actor.name}看了你一会儿，指节若有若无碰过你的衣袖，嗓音压得很低：“${trimmed.slice(0, 20)}……行。你别再一个人硬扛，我会先把你按稳，再陪你把后面的路走完。”`
+      : `${bond.actor.name}听完后沉了片刻，低声道：“${trimmed.slice(0, 22)}……我记住了。你若真要走这一步，我陪着你。”`;
   return {
     reply: bond.bondType === DAO_LU
       ? daoLyuReply
