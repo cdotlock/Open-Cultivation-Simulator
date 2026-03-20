@@ -96,16 +96,16 @@ export default function SettingsPage() {
               <div className="text-[26px]">洞府设置</div>
               <div className="mt-1 text-[12px] tracking-[0.12em] text-[#7a6542]">本地配置</div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <button
                 onClick={() => router.push("/pages/settings/prompts")}
-                className="rounded-full border border-[#8e6a38] px-3 py-2 text-[12px] text-[#5f4525] hover:bg-[#f6ead3]"
+                className="whitespace-nowrap rounded-full border border-[#8e6a38] px-3 py-2 text-[11px] text-[#5f4525] hover:bg-[#f6ead3] md:text-[12px]"
               >
                 提示词
               </button>
               <button
                 onClick={() => router.push("/")}
-                className="rounded-full border border-[#8e6a38] px-3 py-2 text-[12px] text-[#5f4525] hover:bg-[#f6ead3]"
+                className="whitespace-nowrap rounded-full border border-[#8e6a38] px-3 py-2 text-[11px] text-[#5f4525] hover:bg-[#f6ead3] md:text-[12px]"
               >
                 返回
               </button>
@@ -183,16 +183,16 @@ export default function SettingsPage() {
                 </label>
               </div>
 
-              <div className="mt-6 flex gap-3">
+              <div className="mt-6 flex flex-wrap gap-3">
                 <button
                   onClick={handleSaveSettings}
-                  className="rounded-full bg-[#4f3b1d] px-5 py-3 text-sm text-[#f8ecd3]"
+                  className="whitespace-nowrap rounded-full bg-[#4f3b1d] px-4 py-3 text-[12px] text-[#f8ecd3] md:px-5 md:text-sm"
                 >
                   保存设置
                 </button>
                 <button
                   onClick={handleTestConnection}
-                  className="rounded-full border border-[#7c5d32] px-5 py-3 text-sm text-[#5c4422]"
+                  className="whitespace-nowrap rounded-full border border-[#7c5d32] px-4 py-3 text-[12px] text-[#5c4422] md:px-5 md:text-sm"
                 >
                   测试连接
                 </button>

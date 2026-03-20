@@ -737,8 +737,9 @@ const PageStory= () => {
             data={char.bondData}
             onOpenBonds={() => router.push(`/pages/bonds?characterId=${char.id}`)}
             onOpenChat={() => {
-              if (char.bondData?.activeDaoLyu) {
-                router.push(`/pages/bond-chat?characterId=${char.id}&bondId=${char.bondData.activeDaoLyu.id}`);
+              const chatTarget = char.bondData?.activeDaoLyu || char.bondData?.activeDisciples[0];
+              if (chatTarget) {
+                router.push(`/pages/bond-chat?characterId=${char.id}&bondId=${chatTarget.id}`);
               }
             }}
           />

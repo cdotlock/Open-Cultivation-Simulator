@@ -146,6 +146,19 @@ export const bondChatResponseSchema = z.object({
     destinyDelta: z.number().int().min(-3).max(5).default(0)
 });
 
+export const bondEventResponseSchema = z.object({
+    title: z.string(),
+    summary: z.string(),
+    storyHook: z.string(),
+    mood: z.string(),
+    relationshipSummary: z.string(),
+    memorySummary: z.string(),
+    intimacyDelta: z.number().int().min(-5).max(6).default(0),
+    trustDelta: z.number().int().min(-5).max(6).default(0),
+    loyaltyDelta: z.number().int().min(-5).max(6).default(0),
+    destinyDelta: z.number().int().min(-3).max(4).default(0)
+});
+
 // 加点系统 Schema
 export const AttributePointsSchema = z.object({
     魅力: z.number().min(0).max(10).default(0),
@@ -206,3 +219,4 @@ export type SummaryPushV0Type = z.infer<typeof summaryPushSchemaV0>;
 export type GameOptionType = z.infer<typeof GameOptionSchema>;
 export type BondWishStructType = z.infer<typeof bondWishStructSchema>;
 export type BondChatResponseType = z.infer<typeof bondChatResponseSchema>;
+export type BondEventResponseType = z.infer<typeof bondEventResponseSchema>;

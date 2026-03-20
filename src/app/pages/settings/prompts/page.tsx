@@ -79,16 +79,16 @@ export default function PromptSettingsPage() {
               <div className="text-[26px]">高级提示词</div>
               <div className="mt-1 text-[12px] tracking-[0.12em] text-[#7a6542]">PROMPT PACK</div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <button
                 onClick={() => router.push("/pages/settings")}
-                className="rounded-full border border-[#8e6a38] px-3 py-2 text-[12px] text-[#5f4525] hover:bg-[#f6ead3]"
+                className="whitespace-nowrap rounded-full border border-[#8e6a38] px-3 py-2 text-[11px] text-[#5f4525] hover:bg-[#f6ead3] md:text-[12px]"
               >
                 设置
               </button>
               <button
                 onClick={() => router.push("/")}
-                className="rounded-full border border-[#8e6a38] px-3 py-2 text-[12px] text-[#5f4525] hover:bg-[#f6ead3]"
+                className="whitespace-nowrap rounded-full border border-[#8e6a38] px-3 py-2 text-[11px] text-[#5f4525] hover:bg-[#f6ead3] md:text-[12px]"
               >
                 返回
               </button>
@@ -118,7 +118,7 @@ export default function PromptSettingsPage() {
                       key={prompt.name}
                       type="button"
                       onClick={() => setActivePromptName(prompt.name)}
-                      className={`shrink-0 rounded-full border px-4 py-2 text-[12px] transition-colors ${
+                      className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-2 text-[11px] transition-colors md:px-4 md:text-[12px] ${
                         active
                           ? "border-[#7f6336] bg-[#5c4422] text-[#f8edd6]"
                           : "border-[#d3bb8d] bg-[#fffaf2] text-[#6f5939]"
@@ -174,7 +174,7 @@ export default function PromptSettingsPage() {
                     </div>
                     <button
                       onClick={() => handleSavePrompt(activePrompt)}
-                      className="rounded-full border border-[#8b6b3a] bg-[#fff6e7] px-4 py-2 text-xs text-[#5d4523]"
+                      className="whitespace-nowrap rounded-full border border-[#8b6b3a] bg-[#fff6e7] px-4 py-2 text-[11px] text-[#5d4523] md:text-xs"
                     >
                       保存当前模板
                     </button>

@@ -11,7 +11,39 @@ export interface BondMemoryView {
   payload?: {
     user?: string;
     bond?: string;
+    title?: string;
+    storyHook?: string;
+    eventType?: string;
+    turn?: number;
   };
+}
+
+export interface BondEventView {
+  id: number;
+  bondId: number;
+  bondType: BondType;
+  actorName: string;
+  label: string;
+  title: string;
+  summary: string;
+  storyHook?: string;
+  mood?: string;
+  turn?: number;
+}
+
+export interface BondTimelineEntryView {
+  id: number;
+  bondId: number;
+  bondType: BondType;
+  actorName: string;
+  label: string;
+  sourceType: string;
+  summary: string;
+  mood?: string;
+  createdAt: string;
+  title?: string;
+  storyHook?: string;
+  turn?: number;
 }
 
 export interface BondActorView {
@@ -83,6 +115,8 @@ export interface BondUiPayload {
   activeWish?: BondWishView;
   activeDisciples: CharacterBondView[];
   discipleCandidates: CharacterBondView[];
+  featuredEvent?: BondEventView;
+  memoryTimeline: BondTimelineEntryView[];
   recentHighlights: string[];
 }
 

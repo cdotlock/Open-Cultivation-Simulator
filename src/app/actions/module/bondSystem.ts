@@ -3,12 +3,22 @@ import { cultivationLevels, CultivationLevel } from "@/interfaces/const";
 import {
   BondChatResponseType,
   bondChatResponseSchema,
+  BondEventResponseType,
+  bondEventResponseSchema,
   BondWishStructType,
   bondWishStructSchema,
   CharacterStatusSchema,
   CharacterStatusType,
 } from "@/interfaces/schemas";
-import { BondChatResult, BondType, BondUiPayload, BondWishView, CharacterBondView } from "@/interfaces/bond";
+import {
+  BondChatResult,
+  BondEventView,
+  BondTimelineEntryView,
+  BondType,
+  BondUiPayload,
+  BondWishView,
+  CharacterBondView,
+} from "@/interfaces/bond";
 import { prisma } from "@/lib/prisma";
 import { ConfigService } from "@/utils/config-client";
 import { createModelFromConfig, getProviderOptions } from "@/utils/modelAdapter";
@@ -26,6 +36,8 @@ const WISH_ACTIVE = "ACTIVE";
 const WISH_FULFILLED = "FULFILLED";
 const DISCIPLE_REFRESH_INTERVAL = 5;
 const DISCIPLE_CANDIDATE_COUNT = 3;
+const DAO_LU_EVENT_INTERVAL = 3;
+const DISCIPLE_EVENT_INTERVAL = 4;
 
 const DAO_LU_VIBES = [
   "清冷",
@@ -47,6 +59,90 @@ const TRAIT_POOL = [
   "越紧张越爱装平静",
   "表面清冷私下会哄人",
   "说话爱留半句后手",
+] as const;
+
+const DAO_LU_EVENT_BLUEPRINTS = [
+  {
+    key: "guard-lamp",
+    title: "守灯相伴",
+    summary: "道侣在夜里替你守灯守气口，嘴上不说重话，站位却比谁都近。",
+    storyHook: "本回合适合把道侣写成在夜里或途中默默陪着主角，递衣、守灯、压住风声，用安静的动作而不是系统播报来表现靠近。",
+    mood: "靠近",
+    relationshipSummary: "对方已经不再只是路过你的人，而是会在你最虚弱的时候留下来守着你。",
+    memorySummary: "对方在你夜里运气或赶路时守了一阵灯火，彼此的距离悄悄近了一寸。",
+    intimacyDelta: 2,
+    trustDelta: 1,
+    loyaltyDelta: 0,
+    destinyDelta: 1,
+  },
+  {
+    key: "protective",
+    title: "当街护短",
+    summary: "有人在旁说了不该说的话，道侣没抬高声音，却先一步把那股气头替你拦下来了。",
+    storyHook: "本回合适合写成道侣在外人面前替主角护短，动作可以克制，但态度要明显偏向主角，让关系通过插话、挡灾或冷脸来显影。",
+    mood: "护短",
+    relationshipSummary: "这段关系已经开始带出明显的偏心和站位，不再只是若即若离。",
+    memorySummary: "有人当面触了霉头，对方替你拦了下来，护短之意已经藏不住。",
+    intimacyDelta: 1,
+    trustDelta: 2,
+    loyaltyDelta: 0,
+    destinyDelta: 1,
+  },
+  {
+    key: "night-talk",
+    title: "并肩夜谈",
+    summary: "你们在夜里并肩坐了一阵，谁都没把话说得太满，但很多心思已经不必明说。",
+    storyHook: "本回合适合安排一段并肩夜谈、飞舟闲坐或短暂歇脚，让道侣用少量台词试探、宽慰或嘴硬心软地贴近主角。",
+    mood: "试探",
+    relationshipSummary: "彼此说话仍留余地，但已经能在沉默里看懂对方的意思。",
+    memorySummary: "你们夜里并肩说了一阵话，很多试探没有点破，却都被记下了。",
+    intimacyDelta: 2,
+    trustDelta: 1,
+    loyaltyDelta: 0,
+    destinyDelta: 0,
+  },
+] as const;
+
+const DISCIPLE_EVENT_BLUEPRINTS = [
+  {
+    key: "report",
+    title: "歪战报里藏线索",
+    summary: "弟子交上来的战报写得七扭八歪，偏偏里面藏着一条还算有用的线索。",
+    storyHook: "本回合适合让弟子带着蹩脚战报、错字连篇的汇报或不成体统的口信闯进来，闹出点笑话，但最终给主角带来真正有用的信息。",
+    mood: "献宝",
+    relationshipSummary: "对方做事还不够稳，但已经明显在努力把门下的份内事往前扛。",
+    memorySummary: "弟子交来一份漏洞不少的汇报，却意外给你带回了能用的线索。",
+    intimacyDelta: 0,
+    trustDelta: 2,
+    loyaltyDelta: 1,
+    destinyDelta: 0,
+  },
+  {
+    key: "trouble",
+    title: "惹祸后先来认错",
+    summary: "弟子在外惹了点不大不小的麻烦，第一时间回头来找你兜底，倒也没敢藏着掖着。",
+    storyHook: "本回合适合把弟子写成惹了点麻烦后主动回来认错或求救，让师徒关系通过顶嘴、认罚、硬着头皮汇报来体现。",
+    mood: "心虚",
+    relationshipSummary: "对方虽然毛病不少，但已经开始把你真正当作能托底的人。",
+    memorySummary: "弟子在外惹了点祸，却第一时间回来向你交代，师徒之间的依赖更实了一层。",
+    intimacyDelta: 0,
+    trustDelta: 1,
+    loyaltyDelta: 2,
+    destinyDelta: 0,
+  },
+  {
+    key: "credit",
+    title: "替你争了脸面",
+    summary: "弟子把一件小事办得比预想中还利落，回来的时候嘴上装镇定，眼里却明晃晃写着求夸。",
+    storyHook: "本回合适合安排弟子把一件差事办成、替主角挣回一点脸面，再用得意、嘴硬或求夸的细节把师徒关系写活。",
+    mood: "得意",
+    relationshipSummary: "门下这人开始能替你撑一点场面，师门的味道也跟着立起来了。",
+    memorySummary: "弟子办成一桩差事，明明很想讨夸，却还在你面前装作没什么。",
+    intimacyDelta: 1,
+    trustDelta: 2,
+    loyaltyDelta: 2,
+    destinyDelta: 0,
+  },
 ] as const;
 
 const DISCIPLE_ARCHETYPES = [
@@ -141,6 +237,14 @@ function getDiscipleSlotCount(level: CultivationLevel) {
 
 function getCurrentTurn(status: CharacterStatusType) {
   return Math.max(0, 50 - status.行动点);
+}
+
+function parseRuntimeStatus(runtime: Awaited<ReturnType<typeof loadRuntime>>) {
+  if (!runtime?.currentPush?.status) {
+    return undefined;
+  }
+  const statusResult = CharacterStatusSchema.safeParse(runtime.currentPush.status);
+  return statusResult.success ? statusResult.data : undefined;
 }
 
 function inferPreferredGender(wishText: string) {
@@ -376,9 +480,136 @@ function serializeBond(bond: {
         payload: {
           user: typeof payload.user === "string" ? payload.user : undefined,
           bond: typeof payload.bond === "string" ? payload.bond : undefined,
+          title: typeof payload.title === "string" ? payload.title : undefined,
+          storyHook: typeof payload.storyHook === "string" ? payload.storyHook : undefined,
+          eventType: typeof payload.eventType === "string" ? payload.eventType : undefined,
+          turn: typeof payload.turn === "number" ? payload.turn : undefined,
         },
       };
     }),
+  };
+}
+
+function getBondEventInterval(bondType: BondType) {
+  return bondType === DAO_LU ? DAO_LU_EVENT_INTERVAL : DISCIPLE_EVENT_INTERVAL;
+}
+
+function chooseEventBlueprint(bond: CharacterBondView, turn: number) {
+  const pool = bond.bondType === DAO_LU ? DAO_LU_EVENT_BLUEPRINTS : DISCIPLE_EVENT_BLUEPRINTS;
+  const affinity =
+    bond.bondType === DAO_LU
+      ? bond.intimacy + bond.trust + bond.destiny
+      : bond.trust + bond.loyalty + bond.intimacy;
+  const index = Math.abs(bond.id * 17 + turn * 13 + affinity) % pool.length;
+  return pool[index];
+}
+
+function buildFallbackEventResult(bond: CharacterBondView, turn: number): BondEventResponseType {
+  const blueprint = chooseEventBlueprint(bond, turn);
+  const actorName = bond.actor.name;
+
+  return {
+    title: blueprint.title,
+    summary: blueprint.summary.replace(/道侣|对方/g, actorName).replace(/弟子/g, actorName),
+    storyHook: blueprint.storyHook.replace(/道侣|对方/g, actorName).replace(/弟子/g, actorName),
+    mood: blueprint.mood,
+    relationshipSummary: blueprint.relationshipSummary.replace(/对方/g, actorName),
+    memorySummary: blueprint.memorySummary.replace(/对方/g, actorName).replace(/弟子/g, actorName),
+    intimacyDelta: blueprint.intimacyDelta,
+    trustDelta: blueprint.trustDelta,
+    loyaltyDelta: blueprint.loyaltyDelta,
+    destinyDelta: blueprint.destinyDelta,
+  };
+}
+
+async function generateBondEventResult(bond: CharacterBondView, turn: number): Promise<BondEventResponseType> {
+  const fallback = buildFallbackEventResult(bond, turn);
+  const config = await ConfigService.getConfig("bond_event_prompt");
+  if (!config?.model) {
+    return fallback;
+  }
+
+  try {
+    const modelInstance = createModelFromConfig(config.model);
+    const providerOptions = getProviderOptions(config.model, config);
+    const eventBlueprint = chooseEventBlueprint(bond, turn);
+    const recentMemories = bond.memories
+      .slice(0, 6)
+      .map((item) => `- ${item.summary}`)
+      .join("\n");
+    const prompt = (config.userPrompt || "{EVENT_BLUEPRINT}")
+      .replace(/\{BOND_PROFILE\}/g, JSON.stringify(bond.actor))
+      .replace(/\{BOND_STATE\}/g, JSON.stringify({
+        bondType: bond.bondType,
+        label: bond.label,
+        mood: bond.mood,
+        intimacy: bond.intimacy,
+        trust: bond.trust,
+        loyalty: bond.loyalty,
+        destiny: bond.destiny,
+      }))
+      .replace(/\{RECENT_MEMORIES\}/g, recentMemories || "暂无最近记忆")
+      .replace(/\{EVENT_BLUEPRINT\}/g, JSON.stringify(eventBlueprint))
+      .replace(/\{FALLBACK_HINT\}/g, JSON.stringify(fallback));
+    const { object } = await stableGenerateObject({
+      model: modelInstance(config.model.name),
+      providerOptions,
+      schema: bondEventResponseSchema,
+      system: config.systemPrompt || "",
+      prompt,
+      promptTemplate: "bond_event_prompt",
+    });
+    return bondEventResponseSchema.parse(object);
+  } catch {
+    return fallback;
+  }
+}
+
+function buildMemoryTimeline(
+  bonds: CharacterBondView[],
+  limit = 8,
+): BondTimelineEntryView[] {
+  return bonds
+    .flatMap((bond) => bond.memories.map((memory) => ({
+      id: memory.id,
+      bondId: bond.id,
+      bondType: bond.bondType,
+      actorName: bond.actor.name,
+      label: bond.label,
+      sourceType: memory.sourceType,
+      summary: memory.summary,
+      mood: memory.mood,
+      createdAt: memory.createdAt,
+      title: memory.payload?.title,
+      storyHook: memory.payload?.storyHook,
+      turn: memory.payload?.turn,
+    })))
+    .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+    .slice(0, limit);
+}
+
+function buildFeaturedEvent(
+  timeline: BondTimelineEntryView[],
+  currentTurn: number,
+): BondEventView | undefined {
+  const eventEntry = timeline.find((item) => item.sourceType === "EVENT" && item.turn === currentTurn)
+    || timeline.find((item) => item.sourceType === "EVENT");
+
+  if (!eventEntry || !eventEntry.title) {
+    return undefined;
+  }
+
+  return {
+    id: eventEntry.id,
+    bondId: eventEntry.bondId,
+    bondType: eventEntry.bondType,
+    actorName: eventEntry.actorName,
+    label: eventEntry.label,
+    title: eventEntry.title,
+    summary: eventEntry.summary,
+    storyHook: eventEntry.storyHook,
+    mood: eventEntry.mood,
+    turn: eventEntry.turn,
   };
 }
 
@@ -535,6 +766,80 @@ async function refreshDiscipleCandidates(
   }
 }
 
+async function triggerBondEvent(
+  db: DbClient,
+  bond: Parameters<typeof serializeBond>[0],
+  turn: number,
+) {
+  const serializedBond = serializeBond(bond);
+  const result = await generateBondEventResult(serializedBond, turn);
+  const payload = {
+    title: compactText(result.title, "关系异动"),
+    storyHook: compactText(result.storyHook, ""),
+    eventType: chooseEventBlueprint(serializedBond, turn).key,
+    turn,
+  } satisfies Prisma.InputJsonObject;
+
+  await db.characterBond.update({
+    where: { id: bond.id },
+    data: {
+      mood: compactText(result.mood, bond.mood),
+      summary: compactText(result.relationshipSummary, bond.summary || ""),
+      intimacy: clamp(bond.intimacy + result.intimacyDelta, 0, 100),
+      trust: clamp(bond.trust + result.trustDelta, 0, 100),
+      loyalty: clamp(bond.loyalty + result.loyaltyDelta, 0, 100),
+      destiny: clamp(bond.destiny + result.destinyDelta, 0, 100),
+      lastInteractionTurn: turn,
+      nextEventTurn: turn + getBondEventInterval(serializedBond.bondType),
+    },
+  });
+
+  await addBondMemory(
+    db,
+    bond.id,
+    "EVENT",
+    compactText(result.memorySummary, result.summary),
+    compactText(result.mood, bond.mood),
+    2,
+    payload,
+  );
+}
+
+async function maybeTriggerBondEvents(
+  db: DbClient,
+  runtime: NonNullable<Awaited<ReturnType<typeof loadRuntime>>>,
+  turn: number,
+) {
+  const activeBonds = runtime.bonds.filter((bond) => bond.stage === STAGE_ACTIVE);
+  if (!activeBonds.length) {
+    return;
+  }
+
+  const alreadyTriggered = activeBonds.some((bond) => bond.memories.some((memory) => {
+    const payload = memory.payload && typeof memory.payload === "object" ? memory.payload as Record<string, unknown> : {};
+    return memory.sourceType === "EVENT" && payload.turn === turn;
+  }));
+
+  if (alreadyTriggered) {
+    return;
+  }
+
+  const dueBonds = activeBonds
+    .filter((bond) => (bond.nextEventTurn ?? turn) <= turn)
+    .sort((left, right) => {
+      const leftScore = (left.bondType === DAO_LU ? 1000 : 0) - (left.nextEventTurn ?? turn);
+      const rightScore = (right.bondType === DAO_LU ? 1000 : 0) - (right.nextEventTurn ?? turn);
+      return rightScore - leftScore;
+    });
+
+  const selectedBond = dueBonds[0];
+  if (!selectedBond) {
+    return;
+  }
+
+  await triggerBondEvent(db, selectedBond, turn);
+}
+
 async function ensureBondRuntimeStateInternal(
   characterId: number,
   db: DbClient,
@@ -577,16 +882,25 @@ async function ensureBondRuntimeStateInternal(
     }
   }
 
+  const refreshedRuntime = await loadRuntime(characterId, db);
+  if (refreshedRuntime) {
+    await maybeTriggerBondEvents(db, refreshedRuntime, turn);
+  }
+
   return loadRuntime(characterId, db);
 }
 
 function buildHighlights(
+  featuredEvent?: BondEventView,
   activeDaoLyu?: CharacterBondView,
   activeDisciples: CharacterBondView[] = [],
   candidates: CharacterBondView[] = [],
   wish?: BondWishView,
 ) {
   const highlights: string[] = [];
+  if (featuredEvent) {
+    highlights.push(`${featuredEvent.actorName}这边有新动静：${featuredEvent.title}。`);
+  }
   if (activeDaoLyu) {
     highlights.push(`${activeDaoLyu.actor.name}此刻与你的气氛偏“${activeDaoLyu.mood}”。`);
   } else if (wish?.targetEncounterTurn) {
@@ -603,8 +917,12 @@ function buildHighlights(
   return highlights;
 }
 
-export async function getBondUiData(characterId: number, db: DbClient = prisma): Promise<BondUiPayload | undefined> {
-  const runtime = await ensureBondRuntimeStateInternal(characterId, db);
+export async function getBondUiData(
+  characterId: number,
+  db: DbClient = prisma,
+  overrideTurn?: number,
+): Promise<BondUiPayload | undefined> {
+  const runtime = await ensureBondRuntimeStateInternal(characterId, db, overrideTurn);
   if (!runtime?.currentPush?.status) {
     return undefined;
   }
@@ -616,6 +934,7 @@ export async function getBondUiData(characterId: number, db: DbClient = prisma):
 
   const status = statusResult.data;
   const level = status.等级;
+  const currentTurn = overrideTurn ?? getCurrentTurn(status);
   const discipleSlots = getDiscipleSlotCount(level);
   const activeWish = runtime.bondWishes.find((wish) => wish.wishType === DAO_LU && wish.status === WISH_ACTIVE);
   const activeDaoLyu = runtime.bonds.find((bond) => bond.bondType === DAO_LU && bond.stage === STAGE_ACTIVE);
@@ -626,6 +945,15 @@ export async function getBondUiData(characterId: number, db: DbClient = prisma):
   const serializedWish = activeWish ? serializeWish(activeWish) : undefined;
   const serializedDisciples = activeDisciples.map(serializeBond);
   const serializedCandidates = discipleCandidates.map(serializeBond);
+  const timeline = buildMemoryTimeline(
+    [
+      ...(serializedDaoLyu ? [serializedDaoLyu] : []),
+      ...serializedDisciples,
+      ...serializedCandidates,
+    ],
+    10,
+  );
+  const featuredEvent = buildFeaturedEvent(timeline, currentTurn);
 
   return {
     overview: {
@@ -634,7 +962,9 @@ export async function getBondUiData(characterId: number, db: DbClient = prisma):
       disciplesUsed: serializedDisciples.length,
       canWishForDaoLyu: isLevelAtLeast(level, "筑基") && !serializedDaoLyu && !serializedWish,
       canRecruitDisciples: discipleSlots > serializedDisciples.length,
-      nextMajorEvent: serializedDaoLyu
+      nextMajorEvent: featuredEvent
+        ? `${featuredEvent.actorName}：${featuredEvent.title}`
+        : serializedDaoLyu
         ? `${serializedDaoLyu.actor.name}常伴左右`
         : serializedWish?.targetEncounterTurn
           ? `第${serializedWish.targetEncounterTurn}回合前后，愿中之人会出现`
@@ -651,7 +981,9 @@ export async function getBondUiData(characterId: number, db: DbClient = prisma):
     activeWish: serializedWish,
     activeDisciples: serializedDisciples,
     discipleCandidates: serializedCandidates,
-    recentHighlights: buildHighlights(serializedDaoLyu, serializedDisciples, serializedCandidates, serializedWish),
+    featuredEvent,
+    memoryTimeline: timeline,
+    recentHighlights: buildHighlights(featuredEvent, serializedDaoLyu, serializedDisciples, serializedCandidates, serializedWish),
   };
 }
 
@@ -662,8 +994,8 @@ export async function maybeAdvanceBondWorld(
   await ensureBondRuntimeStateInternal(characterId, prisma, nextTurn);
 }
 
-export async function getBondNarrativeContext(characterId: number) {
-  const payload = await getBondUiData(characterId);
+export async function getBondNarrativeContext(characterId: number, overrideTurn?: number) {
+  const payload = await getBondUiData(characterId, prisma, overrideTurn);
   if (!payload) {
     return undefined;
   }
@@ -682,8 +1014,17 @@ export async function getBondNarrativeContext(characterId: number) {
       ? `门墙外已有${payload.discipleCandidates.length}名候选晚辈在观望。`
       : "门下尚无值得点名的弟子。";
 
+  const relationshipEventSummary = payload.featuredEvent
+    ? `${payload.featuredEvent.actorName}眼下的关系事件是“${payload.featuredEvent.title}”：${payload.featuredEvent.summary}`
+    : payload.memoryTimeline
+      .filter((item) => item.sourceType === "EVENT")
+      .slice(0, 2)
+      .map((item) => `${item.actorName}：${item.summary}`)
+      .join("；") || "眼下没有必须强行插入的关系事件。";
+
   return {
-    RELATIONSHIP_SUMMARY: `${daoLyuSummary}\n${discipleSummary}`,
+    RELATIONSHIP_SUMMARY: `${daoLyuSummary}\n${discipleSummary}\n最近关系事件：${relationshipEventSummary}`,
+    RELATIONSHIP_PRIORITY_HOOK: payload.featuredEvent?.storyHook || "若本轮剧情合适，可优先让关键关系对象通过陪行、插话、来信、汇报、护短或顶嘴自然入场。",
     RELATIONSHIP_RULES: [
       "不要直接暴露亲密、信任、忠诚等隐藏数值。",
       "通过插话、陪行、来信、汇报、吃醋、护短、顶嘴、试探等方式侧写关系。",
@@ -753,6 +1094,10 @@ export async function acceptDiscipleCandidate(characterId: number, bondId: numbe
     throw new Error("候选弟子不存在");
   }
 
+  const runtime = await loadRuntime(characterId, prisma);
+  const runtimeStatus = parseRuntimeStatus(runtime);
+  const currentTurn = runtimeStatus ? getCurrentTurn(runtimeStatus) : candidate.introducedAtTurn ?? 0;
+
   const occupied = new Set(payload.activeDisciples.map((item) => item.slotIndex).filter((item): item is number => typeof item === "number"));
   let slotIndex = 1;
   while (occupied.has(slotIndex)) {
@@ -768,6 +1113,7 @@ export async function acceptDiscipleCandidate(characterId: number, bondId: numbe
       trust: clamp(candidate.trust + 12, 0, 100),
       loyalty: clamp(candidate.loyalty + 16, 0, 100),
       summary: "你已正式点头收下此人，对方开始以你的名义行走和受训。",
+      nextEventTurn: currentTurn + 2,
     },
   });
   await addBondMemory(prisma, bondId, "SYSTEM", "你点头收徒，对方从候选晚辈正式成了门下弟子。", "敬服", 2);
@@ -824,6 +1170,10 @@ export async function sendBondChatMessage(characterId: number, bondId: number, m
     throw new Error("说点什么再开口");
   }
 
+  const runtime = await loadRuntime(characterId, prisma);
+  const runtimeStatus = parseRuntimeStatus(runtime);
+  const currentTurn = runtimeStatus ? getCurrentTurn(runtimeStatus) : bond.lastInteractionTurn ?? 0;
+
   const recentMemories = bond.memories
     .slice(0, 6)
     .map((item) => `- ${item.summary}`)
@@ -873,7 +1223,8 @@ export async function sendBondChatMessage(characterId: number, bondId: number, m
       trust: clamp(bond.trust + result.trustDelta, 0, 100),
       loyalty: clamp(bond.loyalty + result.loyaltyDelta, 0, 100),
       destiny: clamp(bond.destiny + result.destinyDelta, 0, 100),
-      lastInteractionTurn: bond.lastInteractionTurn ? bond.lastInteractionTurn + 1 : 1,
+      lastInteractionTurn: currentTurn,
+      nextEventTurn: Math.min(bond.nextEventTurn ?? Number.MAX_SAFE_INTEGER, currentTurn + 2),
     },
   });
   await addBondMemory(
@@ -886,6 +1237,7 @@ export async function sendBondChatMessage(characterId: number, bondId: number, m
     {
       user: compactText(message),
       bond: compactText(result.reply, fallback.reply),
+      turn: currentTurn,
     },
   );
 

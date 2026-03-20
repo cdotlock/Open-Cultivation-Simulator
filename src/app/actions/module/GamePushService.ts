@@ -84,6 +84,7 @@ export class GamePushService {
             RECENT_WORLD_EVENTS: factionContext?.RECENT_WORLD_EVENTS || "最近天下无足以左右剧情的大事。",
             ACTIVE_FACTION_MISSIONS: factionContext?.ACTIVE_FACTION_MISSIONS || "暂无帮派任务。",
             RELATIONSHIP_SUMMARY: bondContext?.RELATIONSHIP_SUMMARY || "眼下暂无真正牵动主角命数的长期关系。",
+            RELATIONSHIP_PRIORITY_HOOK: bondContext?.RELATIONSHIP_PRIORITY_HOOK || "若本轮剧情合适，可让关键关系对象通过陪行、来信、插话、汇报或护短自然露面。",
         };
 
         let systemPrompt = config.systemPrompt || '';
@@ -125,6 +126,9 @@ export class GamePushService {
             const relationshipSection = [
                 "## 关系上下文",
                 variables.RELATIONSHIP_SUMMARY,
+                "",
+                "## 本回合关系钩子",
+                variables.RELATIONSHIP_PRIORITY_HOOK,
             ].join("\n");
 
             if (!userPrompt.includes("关系上下文")) {
@@ -196,7 +200,7 @@ export class GamePushService {
     async startGame(character: Character, currentStatus: CharacterStatusType): Promise<{ push: GamePush; delta: StatusDelta }> {
         const dynamicInput = `当前角色状态: ${formatStatusForLLM(currentStatus)}`;
         const factionContext = await getFactionNarrativeContext(character.id);
-        const bondContext = await getBondNarrativeContext(character.id);
+        const bondContext = await getBondNarrativeContext(character.id, this.calculateTurnCount(currentStatus));
         const result = await this.createGamePush(
             character.id,
             character.currentPushId!,
@@ -230,7 +234,7 @@ export class GamePushService {
 
         const gameContext = await compressMemoryIfNeeded(character.id);
         const factionContext = await getFactionNarrativeContext(character.id);
-        const bondContext = await getBondNarrativeContext(character.id);
+        const bondContext = await getBondNarrativeContext(character.id, nextPlayerTurn);
         const dynamicInput = `
         当前角色状态: ${formatStatusForLLM(currentStatus)}
         ${gameContext}

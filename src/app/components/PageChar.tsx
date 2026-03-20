@@ -123,10 +123,11 @@ export default function PageChar() {
     router.push(`/pages/bonds?characterId=${char.id}`);
   };
   const openBondChatPage = () => {
-    if (!bondData?.activeDaoLyu) {
+    const chatTarget = bondData?.activeDaoLyu || bondData?.activeDisciples[0];
+    if (!chatTarget) {
       return;
     }
-    router.push(`/pages/bond-chat?characterId=${char.id}&bondId=${bondData.activeDaoLyu.id}`);
+    router.push(`/pages/bond-chat?characterId=${char.id}&bondId=${chatTarget.id}`);
   };
 
   // Add delete handler

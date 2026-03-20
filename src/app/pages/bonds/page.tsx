@@ -112,6 +112,8 @@ export default function BondsPage() {
     );
   }
 
+  const memoryTimeline = payload.memoryTimeline ?? [];
+
   return (
     <div className="min-h-screen bg-[#F2EBD9] pb-10">
       <div className="relative min-h-full w-full">
@@ -146,6 +148,22 @@ export default function BondsPage() {
 
           <div className="mt-4 grid gap-4 xl:grid-cols-[1.02fr,0.98fr]">
             <div className="grid gap-4">
+              {payload.featuredEvent ? (
+                <section className="rounded-[24px] border border-[rgba(142,109,63,0.22)] bg-[rgba(255,250,242,0.94)] px-4 py-4 shadow-[0_16px_40px_rgba(53,34,15,0.10)]">
+                  <div className="text-[10px] tracking-[0.18em] text-[#8a6a45]">当前关系事件</div>
+                  <div className="mt-1 text-[20px] text-[#2f2217]">{payload.featuredEvent.title}</div>
+                  <div className="mt-2 text-[12px] text-[#6f5535]">
+                    {payload.featuredEvent.label} · {payload.featuredEvent.actorName} · {payload.featuredEvent.mood || "未明"}
+                  </div>
+                  <div className="mt-3 text-[13px] leading-[1.8] text-[#4b3928]">{payload.featuredEvent.summary}</div>
+                  {payload.featuredEvent.storyHook ? (
+                    <div className="mt-3 rounded-[18px] bg-[rgba(244,234,207,0.86)] px-4 py-3 text-[12px] leading-[1.8] text-[#6f5535]">
+                      剧情钩子：{payload.featuredEvent.storyHook}
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
+
               {payload.activeDaoLyu ? (
                 <BondCard
                   bond={payload.activeDaoLyu}
@@ -206,7 +224,14 @@ export default function BondsPage() {
                 <div className="mt-1 text-[20px] text-[#2f2217]">当前弟子</div>
                 <div className="mt-3 grid gap-3">
                   {payload.activeDisciples.length ? payload.activeDisciples.map((bond) => (
-                    <BondCard key={bond.id} bond={bond} />
+                    <BondCard
+                      key={bond.id}
+                      bond={bond}
+                      action={{
+                        label: "去训话",
+                        onClick: () => router.push(`/pages/bond-chat?characterId=${characterId}&bondId=${bond.id}`),
+                      }}
+                    />
                   )) : (
                     <div className="rounded-[18px] bg-[rgba(244,234,207,0.72)] px-4 py-4 text-[13px] leading-[1.8] text-[#6f5535]">
                       {payload.overview.discipleSlots
@@ -259,6 +284,28 @@ export default function BondsPage() {
                       {item}
                     </div>
                   ))}
+                </div>
+              </section>
+
+              <section className="rounded-[24px] border border-[rgba(142,109,63,0.22)] bg-[rgba(255,250,242,0.94)] px-4 py-4 shadow-[0_16px_40px_rgba(53,34,15,0.10)]">
+                <div className="text-[10px] tracking-[0.18em] text-[#8a6a45]">关系记忆</div>
+                <div className="mt-1 text-[20px] text-[#2f2217]">最近被记住的事</div>
+                <div className="mt-3 space-y-3">
+                  {memoryTimeline.length ? memoryTimeline.map((memory) => (
+                    <div key={memory.id} className="rounded-[18px] bg-[rgba(244,234,207,0.72)] px-4 py-3 text-[#6f5535]">
+                      <div className="text-[11px] tracking-[0.08em] text-[#8a6a45]">
+                        {memory.label} · {memory.actorName} · {memory.sourceType}
+                      </div>
+                      {memory.title ? (
+                        <div className="mt-1 text-[15px] text-[#2f2217]">{memory.title}</div>
+                      ) : null}
+                      <div className="mt-2 text-[13px] leading-[1.8]">{memory.summary}</div>
+                    </div>
+                  )) : (
+                    <div className="rounded-[18px] bg-[rgba(244,234,207,0.72)] px-4 py-4 text-[13px] leading-[1.8] text-[#6f5535]">
+                      眼下还没有哪件关系旧事真正沉下来。
+                    </div>
+                  )}
                 </div>
               </section>
             </div>

@@ -22,6 +22,7 @@ export function BondPortalCard({
       : data.overview.canWishForDaoLyu
         ? "可许道侣愿"
         : "道侣未开";
+  const canOpenChat = Boolean(data.activeDaoLyu || data.activeDisciples.length);
 
   return (
     <section className={`${panelSurface()} overflow-hidden px-4 py-4 text-[#F2E7D0]`}>
@@ -60,7 +61,9 @@ export function BondPortalCard({
       </div>
 
       <div className="mt-4 text-[12px] leading-[1.8] text-[#E8D8BA]">
-        {data.recentHighlights[0]}
+        {data.featuredEvent
+          ? `${data.featuredEvent.actorName}：${data.featuredEvent.title}`
+          : data.recentHighlights[0]}
       </div>
 
       <div className="mt-4 flex gap-2">
@@ -71,7 +74,7 @@ export function BondPortalCard({
         >
           打开缘簿
         </button>
-        {data.activeDaoLyu && onOpenChat ? (
+        {canOpenChat && onOpenChat ? (
           <button
             type="button"
             onClick={onOpenChat}
@@ -95,12 +98,17 @@ export function BondStoryStrip({
   onOpenChat?: () => void;
 }) {
   const headline = data.activeDaoLyu
-    ? `${data.activeDaoLyu.actor.name}在旁，气氛偏${data.activeDaoLyu.mood}`
+    ? data.featuredEvent
+      ? `${data.featuredEvent.actorName}：${data.featuredEvent.title}`
+      : `${data.activeDaoLyu.actor.name}在旁，气氛偏${data.activeDaoLyu.mood}`
     : data.activeWish
       ? `你已许下道侣愿，缘分将在第${data.activeWish.targetEncounterTurn ?? "?"}回合前后兑现`
+      : data.featuredEvent
+        ? `${data.featuredEvent.actorName}：${data.featuredEvent.title}`
       : data.overview.disciplesUsed
         ? `门下已有${data.overview.disciplesUsed}名弟子跟着你见世面`
         : data.recentHighlights[0];
+  const canOpenChat = Boolean(data.activeDaoLyu || data.activeDisciples.length);
 
   return (
     <section className={`${panelSurface()} flex items-center gap-3 px-4 py-3 text-[#F2E7D0]`}>
@@ -115,7 +123,7 @@ export function BondStoryStrip({
       >
         缘簿
       </button>
-      {data.activeDaoLyu && onOpenChat ? (
+      {canOpenChat && onOpenChat ? (
         <button
           type="button"
           onClick={onOpenChat}
