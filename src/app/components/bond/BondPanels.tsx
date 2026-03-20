@@ -16,7 +16,7 @@ export function BondPortalCard({
   onOpenChat?: () => void;
 }) {
   const daoLyuLabel = data.activeDaoLyu
-    ? `${data.activeDaoLyu.actor.name} · ${data.activeDaoLyu.mood}`
+    ? `${data.activeDaoLyu.actor.name} · ${data.activeDaoLyu.progressStage} · ${data.activeDaoLyu.mood}`
     : data.activeWish
       ? "道缘未至"
       : data.overview.canWishForDaoLyu
@@ -41,7 +41,7 @@ export function BondPortalCard({
           <div className="text-[10px] tracking-[0.14em] text-[#EBDAB9]">道侣</div>
           <div className="mt-2 text-[13px] leading-[1.7]">
             {data.activeDaoLyu
-              ? `${data.activeDaoLyu.actor.name}常伴左右`
+              ? `${data.activeDaoLyu.actor.name} · ${data.activeDaoLyu.progressStage}`
               : data.activeWish
                 ? `愿已许下，静候兑现`
                 : data.overview.canWishForDaoLyu
@@ -100,7 +100,7 @@ export function BondStoryStrip({
   const headline = data.activeDaoLyu
     ? data.featuredEvent
       ? `${data.featuredEvent.actorName}：${data.featuredEvent.title}`
-      : `${data.activeDaoLyu.actor.name}在旁，气氛偏${data.activeDaoLyu.mood}`
+      : `${data.activeDaoLyu.actor.name}在旁，已到${data.activeDaoLyu.progressStage}，气氛偏${data.activeDaoLyu.mood}`
     : data.activeWish
       ? `你已许下道侣愿，缘分将在第${data.activeWish.targetEncounterTurn ?? "?"}回合前后兑现`
       : data.featuredEvent

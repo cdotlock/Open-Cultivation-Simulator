@@ -1,5 +1,8 @@
 export type BondType = "DAO_LU" | "DISCIPLE";
 export type BondStage = "WISHING" | "CANDIDATE" | "ACTIVE" | "ARCHIVED";
+export type DaoLyuProgressStage = "初识" | "牵丝" | "相偎" | "缠心" | "同契";
+export type DiscipleProgressStage = "观望" | "入门" | "亲随" | "得力" | "倚重";
+export type BondProgressStage = DaoLyuProgressStage | DiscipleProgressStage;
 
 export interface BondMemoryView {
   id: number;
@@ -67,6 +70,7 @@ export interface CharacterBondView {
   id: number;
   bondType: BondType;
   stage: BondStage;
+  progressStage: BondProgressStage;
   status: string;
   slotIndex?: number;
   label: string;

@@ -24,11 +24,16 @@ function BondCard({
           <div className="text-[10px] tracking-[0.18em] text-[#8a6a45]">{bond.label}</div>
           <div className="mt-1 text-[20px] text-[#2f2217]">{bond.actor.name}</div>
           <div className="mt-1 text-[12px] text-[#6f5535]">
-            {bond.actor.title || "未定称谓"} · {bond.actor.realm} · {bond.mood}
+            {bond.actor.title || "未定称谓"} · {bond.actor.realm} · {bond.progressStage} · {bond.mood}
           </div>
         </div>
-        <div className="rounded-full bg-[rgba(244,234,207,0.92)] px-3 py-1 text-[11px] text-[#7b5d3a]">
-          亲密 {bond.intimacy} / 信任 {bond.trust}
+        <div className="flex flex-col items-end gap-2">
+          <div className="rounded-full border border-[rgba(142,109,63,0.18)] bg-[rgba(255,248,234,0.9)] px-3 py-1 text-[11px] text-[#7b5d3a]">
+            阶段 {bond.progressStage}
+          </div>
+          <div className="rounded-full bg-[rgba(244,234,207,0.92)] px-3 py-1 text-[11px] text-[#7b5d3a]">
+            亲密 {bond.intimacy} / 信任 {bond.trust}
+          </div>
         </div>
       </div>
 
@@ -73,8 +78,6 @@ export default function BondsPage() {
   const [char, setChar] = useRecoilState(characterState);
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [payload, setPayload] = useState<BondUiPayload | undefined>(char?.bondData);
-  const [loading, setLoading] = useState(!char?.bondData);
   const [wishText, setWishText] = useState("");
   const [submittingWish, setSubmittingWish] = useState(false);
 
@@ -85,6 +88,10 @@ export default function BondsPage() {
     }
     return char?.id;
   }, [char?.id, searchParams]);
+  const [payload, setPayload] = useState<BondUiPayload | undefined>(
+    char?.id === characterId ? char?.bondData : undefined,
+  );
+  const [loading, setLoading] = useState(!(char?.id === characterId && char?.bondData));
 
   useEffect(() => {
     if (!characterId) {
@@ -101,7 +108,9 @@ export default function BondsPage() {
 
   const syncPayload = (nextPayload: BondUiPayload | undefined) => {
     setPayload(nextPayload);
-    setChar((previous) => previous ? { ...previous, bondData: nextPayload } : previous);
+    setChar((previous) => (previous && previous.id === characterId)
+      ? { ...previous, bondData: nextPayload }
+      : previous);
   };
 
   if (loading || !payload || !characterId) {
@@ -127,7 +136,7 @@ export default function BondsPage() {
                 <div className="mt-1 text-[26px] text-[#2f2217]">关系与门墙</div>
                 <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-[#7b5d3a]">
                   <div className="rounded-full bg-[rgba(255,250,242,0.92)] px-3 py-1">
-                    道侣：{payload.activeDaoLyu ? payload.activeDaoLyu.actor.name : payload.activeWish ? "愿已许下" : "未定"}
+                    道侣：{payload.activeDaoLyu ? `${payload.activeDaoLyu.actor.name} · ${payload.activeDaoLyu.progressStage}` : payload.activeWish ? "愿已许下" : "未定"}
                   </div>
                   <div className="rounded-full bg-[rgba(255,250,242,0.92)] px-3 py-1">
                     弟子：{payload.overview.disciplesUsed}/{payload.overview.discipleSlots}

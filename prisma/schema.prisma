@@ -405,6 +405,7 @@ model CharacterBond {
   actor              BondActor @relation(fields: [actorId], references: [id], onDelete: Cascade)
   bondType           String
   stage              String
+  progressStage      String   @default("初识")
   status             String   @default("ACTIVE")
   slotIndex          Int?
   label              String
@@ -423,6 +424,7 @@ model CharacterBond {
   memories           BondMemory[]
 
   @@index([characterId, bondType, stage])
+  @@index([characterId, bondType, progressStage])
   @@index([characterId, status])
 }
 

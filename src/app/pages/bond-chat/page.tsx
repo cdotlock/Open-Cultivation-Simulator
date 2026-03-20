@@ -53,8 +53,6 @@ export default function BondChatPage() {
   const [char, setChar] = useRecoilState(characterState);
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [payload, setPayload] = useState<BondUiPayload | undefined>(char?.bondData);
-  const [loading, setLoading] = useState(!char?.bondData);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
 
@@ -67,6 +65,10 @@ export default function BondChatPage() {
   }, [char?.id, searchParams]);
 
   const bondId = useMemo(() => Number(searchParams.get("bondId") || ""), [searchParams]);
+  const [payload, setPayload] = useState<BondUiPayload | undefined>(
+    char?.id === characterId ? char?.bondData : undefined,
+  );
+  const [loading, setLoading] = useState(!(char?.id === characterId && char?.bondData));
 
   useEffect(() => {
     if (!characterId || !bondId) {
@@ -169,7 +171,9 @@ export default function BondChatPage() {
                 try {
                   const result = await sendBondChat(characterId, bondId, message.trim());
                   setPayload(result.bondData || undefined);
-                  setChar((previous) => previous ? { ...previous, bondData: result.bondData } : previous);
+                  setChar((previous) => (previous && previous.id === characterId)
+                    ? { ...previous, bondData: result.bondData }
+                    : previous);
                   setMessage("");
                 } finally {
                   setSending(false);

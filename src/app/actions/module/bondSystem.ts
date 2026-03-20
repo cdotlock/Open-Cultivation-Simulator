@@ -13,6 +13,7 @@ import {
 import {
   BondChatResult,
   BondEventView,
+  BondProgressStage,
   BondTimelineEntryView,
   BondType,
   BondUiPayload,
@@ -39,6 +40,53 @@ const DISCIPLE_CANDIDATE_COUNT = 3;
 const DAO_LU_EVENT_INTERVAL = 3;
 const DISCIPLE_EVENT_INTERVAL = 4;
 
+type JokeTolerance = BondWishStructType["jokeTolerance"];
+
+type EventBlueprint = {
+  key: string;
+  title: string;
+  summary: string;
+  storyHook: string;
+  mood: string;
+  relationshipSummary: string;
+  memorySummary: string;
+  intimacyDelta: number;
+  trustDelta: number;
+  loyaltyDelta: number;
+  destinyDelta: number;
+  requiresAdultTone?: boolean;
+  minJokeTolerance?: JokeTolerance;
+  preferredScenes?: readonly string[];
+  preferredMoods?: readonly string[];
+};
+
+type EventTreeNode = {
+  key: string;
+  label: string;
+  weight?: number;
+  requiresAdultTone?: boolean;
+  minJokeTolerance?: JokeTolerance;
+  preferredScenes?: readonly string[];
+  preferredMoods?: readonly string[];
+  allowedProgressStages?: readonly BondProgressStage[];
+  children?: readonly EventTreeNode[];
+  blueprints?: readonly EventBlueprint[];
+};
+
+type EventSelection = {
+  blueprint: EventBlueprint;
+  branchPath: string[];
+};
+
+type BondFlavorProfile = {
+  adultTone: boolean;
+  jokeTolerance: JokeTolerance;
+  desiredScenes: string[];
+};
+
+const DAO_LYU_PROGRESS_STAGES = ["初识", "牵丝", "相偎", "缠心", "同契"] as const;
+const DISCIPLE_PROGRESS_STAGES = ["观望", "入门", "亲随", "得力", "倚重"] as const;
+
 const DAO_LU_VIBES = [
   "清冷",
   "温柔",
@@ -48,9 +96,15 @@ const DAO_LU_VIBES = [
   "知性",
   "黏人",
   "危险又体面",
+  "坏心眼",
+  "酒气漂亮",
+  "懒散贵气",
+  "艳而不俗",
+  "会撩",
+  "薄情脸",
 ] as const;
 
-const TRAIT_POOL = [
+const DAO_LYU_BASE_TRAIT_POOL = [
   "记仇但护短",
   "嘴上刻薄手上细",
   "夜里不睡爱守灯",
@@ -59,6 +113,43 @@ const TRAIT_POOL = [
   "越紧张越爱装平静",
   "表面清冷私下会哄人",
   "说话爱留半句后手",
+  "明明偏心还装公允",
+  "见你受伤先冷脸再亲手上药",
+  "嘴上嫌你莽撞身体却先挡过来",
+  "会在旁人面前替你把话接住",
+  "看似克制，实际很会拿捏距离",
+  "吃味时反而更温柔",
+  "越在意越爱装没事",
+  "看你时像总比旁人多停半息",
+] as const;
+
+const DAO_LYU_ADULT_TRAIT_POOL = [
+  "替你理衣领时指尖会故意慢半寸",
+  "试你灵脉时总把声线压得很低",
+  "借伞时会把你往自己这边带一点",
+  "喝了酒就不太肯挪开视线",
+  "看你逞强时会先把人按稳再说话",
+  "嘴上正经，贴近时却很会磨人",
+  "会若无其事地替你拢好外袍",
+  "明明会撩，还总装成无心",
+] as const;
+
+const DAO_LYU_JOKE_TRAIT_POOL = [
+  "一本正经说酸话",
+  "传音符里爱留半句欠揍的话",
+  "会拿你的嘴硬原样还回来",
+  "护短时还不忘顺手挤兑你一句",
+] as const;
+
+const DAO_LYU_DEFAULT_SCENES = [
+  "守灯",
+  "并肩",
+  "夜谈",
+  "雨夜",
+  "飞舟",
+  "秘境",
+  "喝酒",
+  "双修",
 ] as const;
 
 const DAO_LU_EVENT_BLUEPRINTS = [
@@ -145,6 +236,782 @@ const DISCIPLE_EVENT_BLUEPRINTS = [
   },
 ] as const;
 
+const DAO_LYU_EVENT_TREE: EventTreeNode = {
+  key: "dao-lu-root",
+  label: "道侣事件树",
+  children: [
+    {
+      key: "dao-lu-early",
+      label: "初识牵丝",
+      allowedProgressStages: ["初识", "牵丝"],
+      children: [
+        {
+          key: "early-quiet",
+          label: "安静靠近",
+          weight: 3,
+          preferredScenes: ["守灯", "夜谈", "并肩", "雨夜"],
+          preferredMoods: ["靠近", "试探", "平静"],
+          blueprints: [
+            {
+              key: "shared-lamp-shadow",
+              title: "守灯时袖影相叠",
+              summary: "对方在你调息时守了半夜灯火，明明离得不远，却偏偏只用袖影和呼吸把距离一点点推近。",
+              storyHook: "本回合适合把道侣写成在夜里守灯、递水或替主角压住屋外风声，用袖影、停顿和并肩的静动作表现靠近。",
+              mood: "靠近",
+              relationshipSummary: "你们之间还没把话说透，但沉默已经开始容得下彼此。",
+              memorySummary: "对方在夜里陪你守灯，明明没说多少话，距离却比先前近得多。",
+              intimacyDelta: 2,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+            },
+            {
+              key: "umbrella-shoulder-brush",
+              title: "借伞时肩骨相碰",
+              summary: "雨丝压下来时，对方把伞面偏向你这边，肩骨若有若无擦过一下，像故意，又像只是懒得解释。",
+              storyHook: "本回合适合安排雨夜同行、山路共伞或避雨短停，让道侣用偏伞、贴肩和一句轻描淡写的话制造暧昧拉扯。",
+              mood: "试探",
+              relationshipSummary: "这段关系开始出现克制却明显的身体靠近，谁都没拆穿。",
+              memorySummary: "雨夜同路时，对方把伞偏向你，肩骨轻轻碰过，暧昧被谁都没点破地留了下来。",
+              intimacyDelta: 2,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 0,
+              preferredScenes: ["雨夜"],
+            },
+            {
+              key: "window-medicine",
+              title: "隔窗递来温药",
+              summary: "你还没开口，对方便把温药从窗边递进来，语气淡得像顺手，偏偏温度和时机都卡得刚好。",
+              storyHook: "本回合适合让道侣以递药、送符、隔窗提醒的方式入场，用过分合时宜的照顾感去侧写心思。",
+              mood: "留心",
+              relationshipSummary: "对方已经开始记你的气口和作息，这份留心很难再解释成偶然。",
+              memorySummary: "你尚未开口，对方就把温药送到了手边，像早把你的状态记在了心里。",
+              intimacyDelta: 1,
+              trustDelta: 2,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+            },
+          ],
+        },
+        {
+          key: "early-joke",
+          label: "嘴硬整活",
+          weight: 2,
+          minJokeTolerance: "中",
+          preferredMoods: ["试探", "嘴硬", "得意"],
+          blueprints: [
+            {
+              key: "teasing-transmission",
+              title: "传音符只留半句",
+              summary: "对方传来的符纸上只写了半句欠揍的话，害你多走半条街去找人，结果他人就靠在檐下看你反应。",
+              storyHook: "本回合适合把道侣写成一本正经地整活，先用半句传音吊着主角，再在会面时装作若无其事地看反应。",
+              mood: "逗弄",
+              relationshipSummary: "彼此已经能拿心思互相试探，气氛比单纯客气更活了。",
+              memorySummary: "对方用半句传音把你逗了过去，见面时还装得像什么都没做。",
+              intimacyDelta: 2,
+              trustDelta: 0,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+            },
+            {
+              key: "serious-sour-line",
+              title: "一本正经说酸话",
+              summary: "旁人多看了你两眼，对方表面在谈正事，话里却平白多出几分带刺的酸意，偏偏说得格外体面。",
+              storyHook: "本回合适合让道侣在正经场合里夹一句酸话，既不失体面，又让人听得出偏心和试探。",
+              mood: "吃味",
+              relationshipSummary: "对方开始对你显出占有欲的雏形，只是还肯用玩笑包一层皮。",
+              memorySummary: "有外人靠近时，对方装作若无其事地说了句酸话，偏心藏得不算高明。",
+              intimacyDelta: 1,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+            },
+          ],
+        },
+        {
+          key: "early-adult",
+          label: "贴近试温",
+          weight: 2,
+          requiresAdultTone: true,
+          preferredScenes: ["守灯", "并肩", "双修", "喝酒"],
+          preferredMoods: ["靠近", "试探", "留心"],
+          blueprints: [
+            {
+              key: "collar-adjustment",
+              title: "理衣领时指尖太慢",
+              summary: "你衣领被风吹乱，对方伸手替你理好，却在喉侧停得比必要多了一瞬，慢得像故意试你会不会躲。",
+              storyHook: "本回合适合写一段极短的贴近动作，比如理衣领、拂灰或扶肩，让暧昧通过指尖停顿和谁都没后退的那一息体现出来。",
+              mood: "撩拨",
+              relationshipSummary: "你们之间已经有了成年人心照不宣的拉扯，不必靠直白言语也能发热。",
+              memorySummary: "对方替你理衣领时指尖停得过慢，像在无声试探你肯不肯让他靠近。",
+              intimacyDelta: 3,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 0,
+              requiresAdultTone: true,
+            },
+            {
+              key: "meridian-touch",
+              title: "试你灵脉时离得过近",
+              summary: "你气息稍乱，对方伸手替你试脉，腕骨和呼吸都压得太近，偏偏神情还淡得像是在做最正经不过的事。",
+              storyHook: "本回合适合安排道侣替主角试脉、压息或扶稳，让克制的专业动作里带出明显的成年人暧昧张力。",
+              mood: "贴近",
+              relationshipSummary: "你们已经能借正经理由自然地靠近彼此，心思藏不住了。",
+              memorySummary: "对方替你试灵脉时离得太近，连呼吸都像故意压到了你耳边。",
+              intimacyDelta: 3,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+              requiresAdultTone: true,
+              preferredScenes: ["双修", "守灯"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      key: "dao-lu-mid",
+      label: "相偎缠心",
+      allowedProgressStages: ["相偎", "缠心"],
+      children: [
+        {
+          key: "mid-public",
+          label: "当众偏心",
+          weight: 3,
+          preferredMoods: ["护短", "吃味", "认真"],
+          blueprints: [
+            {
+              key: "street-protection",
+              title: "当街护短",
+              summary: "有人话里带刺，对方连语气都没抬高，就先一步把你的场子接了过去，护短护得很不留缝。",
+              storyHook: "本回合适合让道侣在外人面前替主角挡话、挡灾或冷脸表态，把偏心和站位写得鲜明但不直白。",
+              mood: "护短",
+              relationshipSummary: "你们的关系已经长出公开站位，对方不会再让旁人随意碰你。",
+              memorySummary: "外人话里生刺时，对方当街把场子替你接住，护短得毫不含糊。",
+              intimacyDelta: 1,
+              trustDelta: 2,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+            },
+            {
+              key: "cloak-around-shoulder",
+              title: "当众替你拢袍",
+              summary: "夜风稍重，对方抬手替你把外袍拢好，动作自然得像做惯了，旁人却都看得出那份不加掩饰的偏心。",
+              storyHook: "本回合适合让道侣在众人视线里做一个自然但亲密的照顾动作，让旁人意识到这段关系已经越过了普通同路人。",
+              mood: "偏心",
+              relationshipSummary: "对方已经不太介意把照顾你这件事摆到别人眼前。",
+              memorySummary: "对方当众替你拢了外袍，偏心显得太自然，谁都装不成没看见。",
+              intimacyDelta: 2,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+            },
+            {
+              key: "cold-smile-jealousy",
+              title: "冷笑替你截话",
+              summary: "有人对你献殷勤，对方只笑了一下，便把那人的话题轻轻截断，笑意不深，醋意倒是藏得并不认真。",
+              storyHook: "本回合适合让道侣在外人靠近主角时自然打断、接话或重新占住位置，把吃味写得克制而好看。",
+              mood: "吃味",
+              relationshipSummary: "这段关系已经带出明显的占有欲，对方开始不太愿意让别人靠得太近。",
+              memorySummary: "有人向你献殷勤时，对方笑着把话截走，吃味吃得相当体面。",
+              intimacyDelta: 2,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 0,
+            },
+          ],
+        },
+        {
+          key: "mid-private",
+          label: "并肩私下",
+          weight: 3,
+          preferredScenes: ["夜谈", "飞舟", "喝酒", "守灯", "秘境"],
+          preferredMoods: ["靠近", "留心", "试探"],
+          blueprints: [
+            {
+              key: "night-drink",
+              title: "并肩夜饮",
+              summary: "你们靠着栏边分了一壶酒，对方酒量分明比你稳，却偏偏在你看过来时故意慢了一拍，像在等一句不太好说的话。",
+              storyHook: "本回合适合安排飞舟夜饮、栏边歇脚或危机后的短暂放松，让道侣用压低声线和留白句子把关系往前推。",
+              mood: "缱绻",
+              relationshipSummary: "彼此已经能在夜色里把话说到一半也不怕对方听不懂。",
+              memorySummary: "你们并肩分了一壶酒，很多没说透的话都被夜风和目光记了下来。",
+              intimacyDelta: 2,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+              preferredScenes: ["喝酒", "飞舟"],
+            },
+            {
+              key: "hand-over-hand-guidance",
+              title: "扶你运气时不肯放手",
+              summary: "你气海浮动时，对方在背后替你导气，明明已经稳住了，却迟迟没把手撤开，像是舍不得先松。",
+              storyHook: "本回合适合让道侣在主角气机不稳或疲惫时出手相助，用手势、停顿和呼吸距离来表现缠心阶段的默契。",
+              mood: "安心",
+              relationshipSummary: "对方已经习惯在你最不稳的时候亲手把你按回安全处。",
+              memorySummary: "你气海浮动时，对方替你导气许久，等稳了还没急着松手。",
+              intimacyDelta: 2,
+              trustDelta: 2,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+            },
+            {
+              key: "secret-lamp-talk",
+              title: "熄灯前又留了一句",
+              summary: "夜里灯都快熄了，对方却在门边又停了一下，回头补了一句似真似假的叮嘱，听上去像命令，实际全是挂念。",
+              storyHook: "本回合适合写一段短暂收尾场景，让道侣在离开前回头补一句嘴硬心软的话，把关系余温留到章节尾部。",
+              mood: "挂念",
+              relationshipSummary: "你们已经习惯把关心藏进临走前那句最难装作随口的话。",
+              memorySummary: "熄灯前，对方回头多留了一句叮嘱，嘴上像发号施令，实际全是挂念。",
+              intimacyDelta: 1,
+              trustDelta: 2,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+            },
+          ],
+        },
+        {
+          key: "mid-adult",
+          label: "克制擦边",
+          weight: 2,
+          requiresAdultTone: true,
+          preferredScenes: ["飞舟", "双修", "夜谈", "喝酒"],
+          preferredMoods: ["撩拨", "贴近", "缱绻", "吃味"],
+          blueprints: [
+            {
+              key: "drug-application",
+              title: "上药时嗓音压得太低",
+              summary: "你伤处并不重，对方却坚持亲手上药，俯身时嗓音压得太低，连你呼吸乱了都像早被他听见。",
+              storyHook: "本回合适合让道侣借上药、包扎或整理伤势的名义短暂贴近，用低声、停顿和目光承接成年人暧昧。",
+              mood: "撩拨",
+              relationshipSummary: "你们之间的拉扯已经明显到连正经照料都带着发烫的边缘感。",
+              memorySummary: "对方替你上药时离得过近，连声线都低得像故意磨人。",
+              intimacyDelta: 3,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+              requiresAdultTone: true,
+            },
+            {
+              key: "flying-boat-wrap",
+              title: "飞舟夜风里把你拢近",
+              summary: "飞舟夜风太急，对方索性把你往自己这边带了一下，说是怕你伤势见风，手却一直没松得太干净。",
+              storyHook: "本回合适合安排飞舟、崖边或高处同行，让道侣借避风、扶稳或护身的动作把距离压得更近。",
+              mood: "贴近",
+              relationshipSummary: "对方已经习惯在照顾你的借口里藏一点不太单纯的私心。",
+              memorySummary: "飞舟夜风里，对方借着护你把人拢近，手上那点不肯松的意思很难忽略。",
+              intimacyDelta: 3,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+              requiresAdultTone: true,
+              preferredScenes: ["飞舟"],
+            },
+            {
+              key: "breath-near-ear",
+              title: "耳畔低声叫你别逞强",
+              summary: "你还想硬撑，对方直接凑近到你耳侧低声叫你别装，语气不重，却近得足够让人心神乱一瞬。",
+              storyHook: "本回合适合用极短的一句耳畔低语或近距离警告制造拉扯感，不用直白表白，也能把成年人暧昧写得很浓。",
+              mood: "压迫",
+              relationshipSummary: "你们已经越过普通亲近，连一句警告都能带出近乎失控的张力。",
+              memorySummary: "你逞强时，对方贴到耳边压低声线叫你别装，那一瞬的距离太近，谁都忘不掉。",
+              intimacyDelta: 3,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 0,
+              requiresAdultTone: true,
+            },
+          ],
+        },
+        {
+          key: "mid-joke",
+          label: "热闹逗弄",
+          weight: 1,
+          minJokeTolerance: "高",
+          preferredMoods: ["得意", "逗弄", "吃味"],
+          blueprints: [
+            {
+              key: "fake-calm-jealousy",
+              title: "装镇定却酸得明显",
+              summary: "对方明明已经吃味，还要一本正经教你怎么避桃花，教到最后自己先被自己说得冷了脸。",
+              storyHook: "本回合适合把道侣的吃味写成一本正经的假劝告，让玩笑和酸意同时落地。",
+              mood: "嘴硬",
+              relationshipSummary: "你们已经能把暧昧和吃味拿来互相逗，关系显得又熟又热。",
+              memorySummary: "对方装作给你提建议，实则一整段都酸得明显，最后连自己都绷不住。",
+              intimacyDelta: 2,
+              trustDelta: 0,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      key: "dao-lu-late",
+      label: "同契相守",
+      allowedProgressStages: ["同契"],
+      children: [
+        {
+          key: "late-vow",
+          label: "并命相守",
+          weight: 3,
+          preferredMoods: ["安心", "认真", "护短"],
+          blueprints: [
+            {
+              key: "same-advance-retreat",
+              title: "并肩说定同进退",
+              summary: "局势压下来时，对方只说了一句“同进退”，语气平得厉害，却把你们之间最后一层试探也压成了实意。",
+              storyHook: "本回合适合在危机、选择或大战前写一句分量很重的并肩承诺，不要长篇表白，只要一句够硬的同进退。",
+              mood: "相守",
+              relationshipSummary: "这段关系已经不再只是暧昧与偏心，而是开始具备真正的共命意味。",
+              memorySummary: "局势最紧时，对方只说了一句同进退，就把你们的关系压成了真正的并命。",
+              intimacyDelta: 2,
+              trustDelta: 2,
+              loyaltyDelta: 0,
+              destinyDelta: 2,
+            },
+            {
+              key: "closed-door-companion",
+              title: "闭关前守到天明",
+              summary: "你要闭关前，对方在门外守到天明，半句多余的情话都没有，只把该备的都替你备齐了。",
+              storyHook: "本回合适合写一段闭关前夜或大战前夜的安静陪伴，让道侣用实打实的守候表现同契阶段的厚度。",
+              mood: "安定",
+              relationshipSummary: "你们已经把陪伴从热烈拉扯走到了真正能托命的安稳。",
+              memorySummary: "你闭关前，对方守到天明，把该备的都先替你备好了。",
+              intimacyDelta: 1,
+              trustDelta: 2,
+              loyaltyDelta: 0,
+              destinyDelta: 2,
+            },
+          ],
+        },
+        {
+          key: "late-protect",
+          label: "偏心到底",
+          weight: 2,
+          preferredMoods: ["护短", "吃味", "相守"],
+          blueprints: [
+            {
+              key: "reject-suitors",
+              title: "替你回绝烂桃花",
+              summary: "麻烦人刚靠近，对方已经替你把话回绝得干干净净，手段温和，界线却摆得比谁都明。",
+              storyHook: "本回合适合让道侣在不失体面的情况下替主角挡掉多余纠缠，把成熟关系里的边界感写清楚。",
+              mood: "占位",
+              relationshipSummary: "对方已经把你的位置默认纳入自己的边界之内，不再给旁人留错觉。",
+              memorySummary: "有人纠缠上来时，对方先一步替你把界线摆明，半点缝也没留。",
+              intimacyDelta: 1,
+              trustDelta: 2,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+            },
+            {
+              key: "injury-cold-face",
+              title: "你一受伤他就冷了脸",
+              summary: "你刚见血，对方神色一下冷下去，先把局面收拾干净，再回来一言不发地亲手把你按稳。",
+              storyHook: "本回合适合让道侣在危机后先处理残局，再把所有情绪收进亲手照顾主角的动作里，表现成熟关系的护短与占位。",
+              mood: "压火",
+              relationshipSummary: "你们之间已经到了不用解释也知道该先护谁、该先稳谁的地步。",
+              memorySummary: "你受伤时，对方先把局面压住，回来后一句废话都没说，只把你按稳照顾好。",
+              intimacyDelta: 2,
+              trustDelta: 2,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+            },
+          ],
+        },
+        {
+          key: "late-adult",
+          label: "成熟拉扯",
+          weight: 2,
+          requiresAdultTone: true,
+          preferredScenes: ["双修", "守灯", "喝酒", "夜谈"],
+          preferredMoods: ["缱绻", "相守", "贴近"],
+          blueprints: [
+            {
+              key: "breath-steadying-embrace",
+              title: "气机乱时先把你拥稳",
+              summary: "你气机一乱，对方先把人扣稳在怀里，等你呼吸平下去才肯松开，动作熟得像已经做过很多次。",
+              storyHook: "本回合适合把成年人暧昧写进救急动作里，用拥稳、压息、贴近耳语表现成熟道侣之间克制但真实的热度。",
+              mood: "缠绵",
+              relationshipSummary: "你们已经有了足够亲密和默契的身体信任，很多靠近不必再借口。",
+              memorySummary: "你气机紊乱时，对方先把你拥稳许久，等你缓过来才慢慢松手。",
+              intimacyDelta: 3,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 2,
+              requiresAdultTone: true,
+            },
+            {
+              key: "wine-gaze-linger",
+              title: "酒后视线停得太久",
+              summary: "酒意上来后，对方靠着桌沿看了你太久，久到连收回目光都像是在给你最后一次躲开的机会。",
+              storyHook: "本回合适合用酒后、夜静或大战后放松的短场景写目光和呼吸，不需要直接挑明，也能让成熟暧昧成立。",
+              mood: "炽热",
+              relationshipSummary: "这段关系已经从试探走到几乎无需遮掩，只差谁先把最后半步迈明。",
+              memorySummary: "酒后，对方看你看得太久，久到连收回目光都像一种放过。",
+              intimacyDelta: 3,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+              requiresAdultTone: true,
+              preferredScenes: ["喝酒"],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+const DISCIPLE_EVENT_TREE: EventTreeNode = {
+  key: "disciple-root",
+  label: "弟子事件树",
+  children: [
+    {
+      key: "disciple-early",
+      label: "入门磨合",
+      allowedProgressStages: ["观望", "入门"],
+      children: [
+        {
+          key: "early-trouble",
+          label: "惹祸认错",
+          weight: 3,
+          preferredMoods: ["心虚", "观望", "认真"],
+          blueprints: [
+            {
+              key: "trouble-confession",
+              title: "惹祸后先来认错",
+              summary: "弟子在外惹了点不大不小的麻烦，兜不住时第一反应不是跑，而是硬着头皮回来找你认错。",
+              storyHook: "本回合适合让弟子惹祸后第一时间回来认错、求罚或求兜底，用嘴硬、认栽和不敢藏着掖着体现师徒关系。",
+              mood: "心虚",
+              relationshipSummary: "对方已经开始把你当作真正能托底的人，虽然惹祸的本事也没落下。",
+              memorySummary: "弟子惹了祸后第一时间回来认错，没敢把事情往外藏。",
+              intimacyDelta: 0,
+              trustDelta: 1,
+              loyaltyDelta: 2,
+              destinyDelta: 0,
+            },
+            {
+              key: "manual-misread",
+              title: "把口诀背出旁门味",
+              summary: "弟子把你给的口诀背得七零八落，还自己乱加理解，差点练偏，发现不对后又吓得连夜回来求你打回来。",
+              storyHook: "本回合适合写弟子学艺时的离谱偏差和慌张补救，让笑点和‘还知道回来找师尊’的依赖感同时成立。",
+              mood: "慌乱",
+              relationshipSummary: "这孩子毛病不少，但至少出了岔子时还知道先回来找你。",
+              memorySummary: "弟子把口诀练偏后吓得连夜回来求你纠正，狼狈得很，却没敢自己硬扛到底。",
+              intimacyDelta: 0,
+              trustDelta: 1,
+              loyaltyDelta: 2,
+              destinyDelta: 0,
+            },
+          ],
+        },
+        {
+          key: "early-meme",
+          label: "闹腾献宝",
+          weight: 2,
+          preferredMoods: ["献宝", "得意", "观望"],
+          blueprints: [
+            {
+              key: "crooked-report-plus",
+              title: "歪战报里藏线索",
+              summary: "弟子递来的战报写得七扭八歪，押韵押得像在念词牌，偏偏里面还真藏着一条能用的线索。",
+              storyHook: "本回合适合让弟子带着不成体统却意外有用的情报闯进来，用笑料包着正经贡献，把人写活。",
+              mood: "献宝",
+              relationshipSummary: "对方做事还不够稳，但已经急着把能用的东西往你面前送。",
+              memorySummary: "弟子交来一份歪得离谱的战报，却还真给你带回了可用的线索。",
+              intimacyDelta: 0,
+              trustDelta: 2,
+              loyaltyDelta: 1,
+              destinyDelta: 0,
+            },
+            {
+              key: "artifact-weird-name",
+              title: "给法器起怪名还叫开了",
+              summary: "弟子顺手给新法器起了个不像样的名字，原以为只会丢人，结果附近弟子全给传开了，叫得比正式名还响。",
+              storyHook: "本回合适合把弟子写成闹腾、嘴快又意外带起气氛的人，让一个怪名字或怪梗在门下传开。",
+              mood: "得意",
+              relationshipSummary: "这人虽然闹腾，但已经开始给门下带出一点鲜活的烟火气。",
+              memorySummary: "弟子给法器起的怪名字莫名传遍了门下，丢人和长脸居然只差一步。",
+              intimacyDelta: 1,
+              trustDelta: 1,
+              loyaltyDelta: 1,
+              destinyDelta: 0,
+            },
+            {
+              key: "shoe-stones",
+              title: "灵石又藏鞋底",
+              summary: "弟子明明已经入你门下，还是改不掉把灵石藏鞋底的老毛病，被人当场抖出来后红着脸来找你求一套新规矩。",
+              storyHook: "本回合适合用弟子的旧毛病闹出轻喜剧，再借师徒间的训话或包庇写关系温度。",
+              mood: "窘迫",
+              relationshipSummary: "对方还带着过去的穷酸毛病，但已经愿意把这些狼狈交到你面前。",
+              memorySummary: "弟子灵石藏鞋底的旧毛病被揭出来后，硬着头皮来找你求规矩。",
+              intimacyDelta: 1,
+              trustDelta: 1,
+              loyaltyDelta: 1,
+              destinyDelta: 0,
+            },
+          ],
+        },
+        {
+          key: "early-earnest",
+          label: "倔着上进",
+          weight: 2,
+          preferredMoods: ["认真", "敬服", "观望"],
+          blueprints: [
+            {
+              key: "midnight-practice",
+              title: "半夜偷练还装不累",
+              summary: "弟子练到半夜手都发抖，见你问起还要嘴硬说不累，结果连剑都差点握不稳。",
+              storyHook: "本回合适合把弟子的死扛和求强写得有点狼狈也有点讨人疼，让师徒关系借训斥或默许推进。",
+              mood: "死扛",
+              relationshipSummary: "对方已经开始把你的认可看得很重，所以练得比嘴上承认的更狠。",
+              memorySummary: "弟子半夜偷练到手抖还硬说不累，求强求得很不体面，却也很认真。",
+              intimacyDelta: 1,
+              trustDelta: 1,
+              loyaltyDelta: 2,
+              destinyDelta: 0,
+            },
+            {
+              key: "half-move-request",
+              title: "见你就想讨半招",
+              summary: "弟子刚从外面跑回来，气都没喘匀，第一句话就是想向你讨半招，眼神亮得像怕晚一点你就不肯教了。",
+              storyHook: "本回合适合写弟子逮到机会就想学两手的黏劲，用求教、讨打、抢着演示来增强师徒存在感。",
+              mood: "求教",
+              relationshipSummary: "对方已经把从你手里抠到一点真东西，当成了最值钱的奖赏。",
+              memorySummary: "弟子一回来就想向你讨半招，眼神亮得像怕机会从手缝里漏掉。",
+              intimacyDelta: 0,
+              trustDelta: 2,
+              loyaltyDelta: 2,
+              destinyDelta: 0,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      key: "disciple-mid",
+      label: "亲随得力",
+      allowedProgressStages: ["亲随", "得力"],
+      children: [
+        {
+          key: "mid-competence",
+          label: "争脸办事",
+          weight: 3,
+          preferredMoods: ["得意", "认真", "献宝"],
+          blueprints: [
+            {
+              key: "win-face-plus",
+              title: "替你争了脸面",
+              summary: "弟子把差事办得比预想中利落，回来时明明想求夸，还非要装出一副“这不是应该的吗”的样子。",
+              storyHook: "本回合适合安排弟子把一件差事办成，用装镇定、等夸、嘴硬这些细节把师徒关系写活。",
+              mood: "得意",
+              relationshipSummary: "门下这人已经能替你撑一点场面，师门的骨头开始立起来了。",
+              memorySummary: "弟子办成差事后明明很想讨夸，却还在你面前装得没什么。",
+              intimacyDelta: 1,
+              trustDelta: 2,
+              loyaltyDelta: 2,
+              destinyDelta: 0,
+            },
+            {
+              key: "market-negotiation",
+              title: "坊市里替你谈成了价",
+              summary: "弟子在坊市和人磨了半天嘴皮，最后真把一桩本不该占便宜的交易谈成了，回来时尾巴都快翘到天上。",
+              storyHook: "本回合适合让弟子在外跑腿、交涉或打探，把机灵和想讨夸都写出来，让师徒线更有烟火气。",
+              mood: "得意",
+              relationshipSummary: "对方已经不止会惹祸，也开始知道替你把事办漂亮。",
+              memorySummary: "弟子在坊市替你谈成了一桩便宜买卖，回来时得意得几乎藏不住。",
+              intimacyDelta: 1,
+              trustDelta: 2,
+              loyaltyDelta: 1,
+              destinyDelta: 0,
+            },
+            {
+              key: "public-defense",
+              title: "替你把闲话怼回去",
+              summary: "旁人说了句不轻不重的闲话，弟子当场就给怼了回去，怼完才想起来自己说得有点太冲，只能再回来认罚。",
+              storyHook: "本回合适合让弟子在外维护主角声名，先长脸后心虚，把忠心和鲁莽一起落地。",
+              mood: "护短",
+              relationshipSummary: "对方已经把替你守脸面当成本能，哪怕方式还不够稳。",
+              memorySummary: "弟子为你当场把闲话怼了回去，长脸是长脸了，回来也老老实实认了罚。",
+              intimacyDelta: 0,
+              trustDelta: 2,
+              loyaltyDelta: 2,
+              destinyDelta: 0,
+            },
+          ],
+        },
+        {
+          key: "mid-loyalty",
+          label: "先回你这里",
+          weight: 2,
+          preferredMoods: ["敬服", "认真", "心虚"],
+          blueprints: [
+            {
+              key: "report-first",
+              title: "风头正紧也先回来报你",
+              summary: "外头风声很紧，弟子明明可以先躲，却还是先回来把来龙去脉交到你手里，像把这一门的规矩认进骨头了。",
+              storyHook: "本回合适合让弟子在紧要关头先回师门报你，用‘先回来再说’的选择体现忠诚和归属感。",
+              mood: "敬服",
+              relationshipSummary: "对方已经把回到你这里当成了遇事的第一反应。",
+              memorySummary: "局势紧时，弟子没有先躲，而是先回来把事情交到你手里。",
+              intimacyDelta: 0,
+              trustDelta: 2,
+              loyaltyDelta: 3,
+              destinyDelta: 0,
+            },
+            {
+              key: "take-blame",
+              title: "先把错往自己身上拦",
+              summary: "差事出了纰漏，弟子第一反应不是推责，而是先把错拦到自己身上，回头再老老实实来问你该怎么补。",
+              storyHook: "本回合适合把弟子写成先扛责任、后求指点的状态，让‘长大一点了’的感觉自然显出来。",
+              mood: "认账",
+              relationshipSummary: "对方开始学着替你守门面，也学着替自己担事。",
+              memorySummary: "出了纰漏后，弟子先把错拦到了自己身上，再回来问你怎么补。",
+              intimacyDelta: 0,
+              trustDelta: 2,
+              loyaltyDelta: 2,
+              destinyDelta: 0,
+            },
+          ],
+        },
+        {
+          key: "mid-meme",
+          label: "门下梗王",
+          weight: 2,
+          preferredMoods: ["得意", "献宝", "护短"],
+          blueprints: [
+            {
+              key: "stage-announcer",
+              title: "紧张时又给自己报幕",
+              summary: "弟子一紧张就忍不住给自己报幕，原本是坏毛病，这次却硬是把围观的人都整懵了，反倒替你抢回了场面。",
+              storyHook: "本回合适合把弟子的怪毛病写成反差喜感，让原本丢人的习惯意外派上用场。",
+              mood: "滑头",
+              relationshipSummary: "对方那些离谱毛病正在慢慢变成有记忆点的门下特色。",
+              memorySummary: "弟子紧张时又给自己报幕，原本丢人，结果这回居然还真救了场。",
+              intimacyDelta: 1,
+              trustDelta: 1,
+              loyaltyDelta: 1,
+              destinyDelta: 0,
+            },
+            {
+              key: "victory-rhyme",
+              title: "写捷报还要强行押韵",
+              summary: "弟子明明打了场漂亮仗，回来交捷报时却还在强行押韵，把严肃场面写出一股歪门邪道的喜气。",
+              storyHook: "本回合适合让弟子用不靠谱的表达方式交出靠谱成果，让笑点和成长同时成立。",
+              mood: "献宝",
+              relationshipSummary: "这人还是那个会整活的人，但已经越来越会把事做成。",
+              memorySummary: "弟子写捷报还不忘强行押韵，离谱归离谱，功劳倒也是真的。",
+              intimacyDelta: 1,
+              trustDelta: 1,
+              loyaltyDelta: 1,
+              destinyDelta: 0,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      key: "disciple-late",
+      label: "倚重门下",
+      allowedProgressStages: ["倚重"],
+      children: [
+        {
+          key: "late-backbone",
+          label: "能撑门面",
+          weight: 3,
+          preferredMoods: ["护短", "认真", "得意"],
+          blueprints: [
+            {
+              key: "hold-the-line",
+              title: "替你把门面撑住了",
+              summary: "你不在时，弟子先一步把门下的人心和场面都稳住了，等你回来时才把一肚子紧张往下咽。",
+              storyHook: "本回合适合让弟子在主角未到场时先稳住局面，表现其已能代表师门做出判断。",
+              mood: "撑场",
+              relationshipSummary: "对方已经不只是门下跟班，而是能替你暂时扛起门面的人。",
+              memorySummary: "你不在时，弟子先把场面稳住了，等你回来才露出那口一直憋着的紧张。",
+              intimacyDelta: 1,
+              trustDelta: 3,
+              loyaltyDelta: 2,
+              destinyDelta: 0,
+            },
+            {
+              key: "organize-juniors",
+              title: "会替你收拾小崽子了",
+              summary: "门下小辈闹成一团，弟子居然先一步把人拎住了，训话训得还真有几分你的影子。",
+              storyHook: "本回合适合让弟子代替主角管束门下、整理秩序，用模仿师尊口吻的细节体现传承感。",
+              mood: "成熟",
+              relationshipSummary: "你教出去的痕迹，已经开始在对方身上长成新的门风。",
+              memorySummary: "弟子替你收拾门下小辈，训起人来竟真有几分你的影子。",
+              intimacyDelta: 1,
+              trustDelta: 2,
+              loyaltyDelta: 2,
+              destinyDelta: 0,
+            },
+          ],
+        },
+        {
+          key: "late-loyalty",
+          label: "死心塌地",
+          weight: 2,
+          preferredMoods: ["敬服", "护短", "心虚"],
+          blueprints: [
+            {
+              key: "rush-and-report",
+              title: "先替你顶上再回来领罚",
+              summary: "局势一乱，弟子第一反应就是先替你顶上去，顶完回来还知道老实来领罚，半句辩解都没留。",
+              storyHook: "本回合适合让弟子先斩后奏地替主角顶上风险，再回来认罚，把鲁莽和忠心同时写出来。",
+              mood: "死扛",
+              relationshipSummary: "对方已经把替你扛一下视作本能，哪怕自己也知道会挨训。",
+              memorySummary: "局势一乱，弟子先替你顶了上去，事后回来半句不辩地领罚。",
+              intimacyDelta: 0,
+              trustDelta: 2,
+              loyaltyDelta: 3,
+              destinyDelta: 0,
+            },
+            {
+              key: "face-first-loyalty",
+              title: "嘴还是硬，膝却先弯了",
+              summary: "弟子嘴上还想顶一句，真到该认错的时候却先一步跪稳了，认错认得又快又直，像怕你比他更失望。",
+              storyHook: "本回合适合把弟子那点嘴硬和真正的敬服放在一起写，让角色既好笑又见真心。",
+              mood: "敬服",
+              relationshipSummary: "这份忠心已经不只是喊出来的，连认错时的姿态都带着把你放很重的意思。",
+              memorySummary: "弟子嘴上还想顶，膝却先一步跪稳了，认错认得比谁都快。",
+              intimacyDelta: 1,
+              trustDelta: 1,
+              loyaltyDelta: 3,
+              destinyDelta: 0,
+            },
+          ],
+        },
+        {
+          key: "late-meme",
+          label: "离谱门风",
+          weight: 1,
+          preferredMoods: ["得意", "滑头", "撑场"],
+          blueprints: [
+            {
+              key: "warning-ballad",
+              title: "把门规唱成了顺口溜",
+              summary: "弟子嫌正经宣讲太慢，索性把门规编成顺口溜传给众人，离谱归离谱，居然真比板着脸讲更好使。",
+              storyHook: "本回合适合把弟子的鬼点子写成能落地的管理方式，让门下气质更鲜活。",
+              mood: "滑头",
+              relationshipSummary: "对方已经不是单纯闹腾，而是学会拿离谱办法办正经事了。",
+              memorySummary: "弟子把门规编成顺口溜传了出去，荒唐是荒唐，效果却出奇地好。",
+              intimacyDelta: 1,
+              trustDelta: 1,
+              loyaltyDelta: 1,
+              destinyDelta: 0,
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
 const DISCIPLE_ARCHETYPES = [
   {
     title: "山门晚辈",
@@ -211,6 +1078,237 @@ function sampleUnique(items: readonly string[], count: number) {
   return selected;
 }
 
+const DAO_LYU_STAGE_SUMMARY: Record<(typeof DAO_LYU_PROGRESS_STAGES)[number], string> = {
+  初识: "刚结缘不久，彼此已不再是纯粹的陌路人。",
+  牵丝: "心思开始越界，很多偏心和试探已经藏不太住。",
+  相偎: "彼此会自然地靠向对方，关系已经有了稳定温度。",
+  缠心: "情意和占位都越来越明，很多靠近不再需要借口。",
+  同契: "这段关系已经长成并肩共命的样子，日常与险境都能彼此托底。",
+};
+
+const DISCIPLE_STAGE_SUMMARY: Record<(typeof DISCIPLE_PROGRESS_STAGES)[number], string> = {
+  观望: "还在门墙之外观望，尚未真正拜入门下。",
+  入门: "已经入门，但还在摸索你的规矩和门下位置。",
+  亲随: "开始把你当真正的师尊，遇事会先回到你这里。",
+  得力: "能替你争脸面、跑差事，逐渐像个能用的人。",
+  倚重: "已经能代你撑一阵门面，是门下真正拿得出手的人。",
+};
+
+function getJokeToleranceRank(value: JokeTolerance) {
+  if (value === "高") {
+    return 2;
+  }
+  if (value === "中") {
+    return 1;
+  }
+  return 0;
+}
+
+function normalizeJokeTolerance(input: string | undefined): JokeTolerance {
+  return input === "高" || input === "低" ? input : "中";
+}
+
+function isDaoLyuProgressStage(stage: BondProgressStage): stage is (typeof DAO_LYU_PROGRESS_STAGES)[number] {
+  return DAO_LYU_PROGRESS_STAGES.includes(stage as (typeof DAO_LYU_PROGRESS_STAGES)[number]);
+}
+
+function isDiscipleProgressStage(stage: BondProgressStage): stage is (typeof DISCIPLE_PROGRESS_STAGES)[number] {
+  return DISCIPLE_PROGRESS_STAGES.includes(stage as (typeof DISCIPLE_PROGRESS_STAGES)[number]);
+}
+
+function buildStableSeed(...parts: Array<string | number | undefined>) {
+  let hash = 2166136261;
+  for (const part of parts) {
+    const text = String(part ?? "");
+    for (let index = 0; index < text.length; index += 1) {
+      hash ^= text.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+  }
+  return Math.abs(hash >>> 0);
+}
+
+function pickSeededWeighted<T>(
+  items: readonly T[],
+  seed: number,
+  weightFn: (item: T) => number,
+): T | undefined {
+  const weighted = items
+    .map((item) => ({ item, weight: Math.max(0, weightFn(item)) }))
+    .filter((entry) => entry.weight > 0);
+  if (!weighted.length) {
+    return undefined;
+  }
+  const total = weighted.reduce((sum, entry) => sum + entry.weight, 0);
+  let cursor = seed % total;
+  for (const entry of weighted) {
+    cursor -= entry.weight;
+    if (cursor < 0) {
+      return entry.item;
+    }
+  }
+  return weighted[weighted.length - 1]?.item;
+}
+
+function buildBondFlavorProfile(bond: CharacterBondView): BondFlavorProfile {
+  const hiddenTraits = bond.actor.hiddenTraits ?? [];
+  const jokeTag = hiddenTraits.find((item) => item.startsWith("整活耐受:"));
+  const jokeTolerance = normalizeJokeTolerance(jokeTag?.split(":")[1]);
+  const desiredScenes = hiddenTraits
+    .filter((item) => item.startsWith("偏好场景:"))
+    .map((item) => compactText(item.split(":")[1]))
+    .filter(Boolean);
+
+  return {
+    adultTone: bond.actor.adultContentEnabled,
+    jokeTolerance,
+    desiredScenes,
+  };
+}
+
+function deriveBondProgressStage(
+  bondType: BondType,
+  stage: string,
+  stats: Pick<CharacterBondView, "intimacy" | "trust" | "loyalty" | "destiny">,
+): BondProgressStage {
+  if (bondType === DAO_LU) {
+    const score = stats.intimacy * 0.42 + stats.trust * 0.2 + stats.destiny * 0.38;
+    if (score >= 86) {
+      return "同契";
+    }
+    if (score >= 68) {
+      return "缠心";
+    }
+    if (score >= 50) {
+      return "相偎";
+    }
+    if (score >= 28) {
+      return "牵丝";
+    }
+    return "初识";
+  }
+
+  if (stage === STAGE_CANDIDATE) {
+    return "观望";
+  }
+  const score = stats.intimacy * 0.16 + stats.trust * 0.38 + stats.loyalty * 0.46;
+  if (score >= 82) {
+    return "倚重";
+  }
+  if (score >= 64) {
+    return "得力";
+  }
+  if (score >= 46) {
+    return "亲随";
+  }
+  return "入门";
+}
+
+function describeBondProgressStage(bondType: BondType, progressStage: BondProgressStage) {
+  if (bondType === DAO_LU && isDaoLyuProgressStage(progressStage)) {
+    return DAO_LYU_STAGE_SUMMARY[progressStage];
+  }
+  if (bondType === DISCIPLE && isDiscipleProgressStage(progressStage)) {
+    return DISCIPLE_STAGE_SUMMARY[progressStage];
+  }
+  return bondType === DAO_LU ? DAO_LYU_STAGE_SUMMARY.初识 : DISCIPLE_STAGE_SUMMARY.入门;
+}
+
+function pickFallbackFlatBlueprint(bond: CharacterBondView, turn: number) {
+  const pool = bond.bondType === DAO_LU ? DAO_LU_EVENT_BLUEPRINTS : DISCIPLE_EVENT_BLUEPRINTS;
+  const affinity =
+    bond.bondType === DAO_LU
+      ? bond.intimacy + bond.trust + bond.destiny
+      : bond.trust + bond.loyalty + bond.intimacy;
+  const index = Math.abs(bond.id * 17 + turn * 13 + affinity) % pool.length;
+  return pool[index];
+}
+
+function nodeMatchesFlavor(node: EventTreeNode | EventBlueprint, bond: CharacterBondView, flavor: BondFlavorProfile) {
+  if (node.requiresAdultTone && !flavor.adultTone) {
+    return false;
+  }
+  if (node.minJokeTolerance && getJokeToleranceRank(flavor.jokeTolerance) < getJokeToleranceRank(node.minJokeTolerance)) {
+    return false;
+  }
+  if ("allowedProgressStages" in node && node.allowedProgressStages && !node.allowedProgressStages.includes(bond.progressStage)) {
+    return false;
+  }
+  return true;
+}
+
+function scoreEventNode(node: EventTreeNode | EventBlueprint, bond: CharacterBondView, flavor: BondFlavorProfile) {
+  let score = "weight" in node ? node.weight ?? 1 : 1;
+  if (node.preferredMoods?.some((item) => bond.mood.includes(item))) {
+    score += 2;
+  }
+  if (node.preferredScenes?.some((item) => flavor.desiredScenes.includes(item))) {
+    score += 2;
+  }
+  if (node.requiresAdultTone && flavor.adultTone) {
+    score += 2;
+  }
+  if (node.minJokeTolerance) {
+    score += Math.max(0, getJokeToleranceRank(flavor.jokeTolerance) - getJokeToleranceRank(node.minJokeTolerance) + 1);
+  }
+  return score;
+}
+
+function chooseEventSelectionFromTree(
+  node: EventTreeNode,
+  bond: CharacterBondView,
+  flavor: BondFlavorProfile,
+  seed: number,
+  branchPath: string[] = [],
+): EventSelection | undefined {
+  const children = (node.children ?? []).filter((item) => nodeMatchesFlavor(item, bond, flavor));
+  if (children.length) {
+    const child = pickSeededWeighted(children, seed, (item) => scoreEventNode(item, bond, flavor));
+    if (child) {
+      return chooseEventSelectionFromTree(
+        child,
+        bond,
+        flavor,
+        buildStableSeed(seed, child.key, bond.progressStage, bond.mood),
+        [...branchPath, child.label],
+      );
+    }
+  }
+
+  const blueprints = (node.blueprints ?? []).filter((item) => nodeMatchesFlavor(item, bond, flavor));
+  const blueprint = pickSeededWeighted(blueprints, seed, (item) => scoreEventNode(item, bond, flavor));
+  if (!blueprints.length || !blueprint) {
+    return undefined;
+  }
+  return {
+    blueprint,
+    branchPath: [...branchPath, blueprint.title],
+  };
+}
+
+function chooseEventSelection(bond: CharacterBondView, turn: number): EventSelection {
+  const flavor = buildBondFlavorProfile(bond);
+  const root = bond.bondType === DAO_LU ? DAO_LYU_EVENT_TREE : DISCIPLE_EVENT_TREE;
+  const seed = buildStableSeed(
+    bond.id,
+    turn,
+    bond.progressStage,
+    bond.mood,
+    bond.intimacy,
+    bond.trust,
+    bond.loyalty,
+    bond.destiny,
+    flavor.jokeTolerance,
+    flavor.desiredScenes.join("|"),
+  );
+  return (
+    chooseEventSelectionFromTree(root, bond, flavor, seed, [root.label]) || {
+      blueprint: pickFallbackFlatBlueprint(bond, turn),
+      branchPath: [root.label, "平铺回退"],
+    }
+  );
+}
+
 function getLevelIndex(level: CultivationLevel) {
   return cultivationLevels.indexOf(level);
 }
@@ -258,14 +1356,14 @@ function inferPreferredGender(wishText: string) {
 }
 
 function inferWishStructHeuristically(wishText: string): BondWishStructType {
-  const vibeKeywords = ["清冷", "温柔", "师姐", "师兄", "狐系", "黏人", "知性", "危险", "体贴", "嘴硬心软"];
-  const traitKeywords = ["会照顾人", "嘴硬心软", "会撩", "爱吃醋", "稳重", "聪明", "毒舌", "乖", "疯", "护短"];
-  const sceneKeywords = ["并肩", "雨夜", "喝酒", "下棋", "双修", "夜谈", "秘境", "飞舟", "守灯", "并行"];
+  const vibeKeywords = ["清冷", "温柔", "师姐", "师兄", "狐系", "黏人", "知性", "危险", "体贴", "嘴硬心软", "坏心眼", "会撩", "艳", "贵气"];
+  const traitKeywords = ["会照顾人", "嘴硬心软", "会撩", "爱吃醋", "稳重", "聪明", "毒舌", "乖", "疯", "护短", "会哄", "偏心", "勾人", "坏"];
+  const sceneKeywords = ["并肩", "雨夜", "喝酒", "下棋", "双修", "夜谈", "秘境", "飞舟", "守灯", "并行", "上药", "贴肩", "理衣领"];
   const desiredVibe = vibeKeywords.filter((item) => wishText.includes(item));
   const desiredTraits = traitKeywords.filter((item) => wishText.includes(item));
   const desiredScenes = sceneKeywords.filter((item) => wishText.includes(item));
-  const adultTone = /(擦边|暧昧|会撩|黏人|身材|诱|勾人|撩)/.test(wishText);
-  const jokeTolerance = /(整活|恶搞|沙雕|抽象)/.test(wishText)
+  const adultTone = /(擦边|暧昧|会撩|黏人|身材|诱|勾人|撩|色气|腿|腰|锁骨|贴贴|亲近点|压近|会亲|会抱|耳边|低声|撩人)/.test(wishText);
+  const jokeTolerance = /(整活|恶搞|沙雕|抽象|玩梗|搞笑|活宝)/.test(wishText)
     ? "高"
     : /(正经|别太闹|安静)/.test(wishText)
       ? "低"
@@ -309,12 +1407,27 @@ async function parseWishStruct(wishText: string): Promise<BondWishStructType> {
 function buildDaoLyuActorDraft(level: CultivationLevel, wish: BondWishStructType, rawWish: string) {
   const gender = inferPreferredGender(rawWish);
   const vibe = wish.desiredVibe.length ? wish.desiredVibe : sampleUnique(DAO_LU_VIBES, 2);
-  const publicTraits = wish.desiredTraits.length ? wish.desiredTraits : sampleUnique(TRAIT_POOL, 3);
+  const desiredScenes = wish.desiredScenes.length ? wish.desiredScenes : sampleUnique(DAO_LYU_DEFAULT_SCENES, 2);
+  const traitPool = [
+    ...DAO_LYU_BASE_TRAIT_POOL,
+    ...(wish.adultTone ? DAO_LYU_ADULT_TRAIT_POOL : []),
+    ...(wish.jokeTolerance === "高" ? DAO_LYU_JOKE_TRAIT_POOL : []),
+  ];
+  const publicTraits = wish.desiredTraits.length
+    ? sampleUnique([...wish.desiredTraits, ...traitPool], 3)
+    : sampleUnique(traitPool, 3);
   const speakingStyle = vibe.includes("清冷")
     ? "字少，却总能在你最狼狈时把话说到心口上。"
     : vibe.includes("温柔")
       ? "声线温缓，像是先替你想过了退路。"
-      : "表面漫不经心，真正开口时分寸拿得很准。";
+      : wish.adultTone
+        ? "说话时声线总压得很低，像故意留一线余地给你心乱。"
+        : "表面漫不经心，真正开口时分寸拿得很准。";
+  const intimacy = wish.adultTone ? 24 : 18;
+  const trust = 52;
+  const loyalty = 58;
+  const destiny = wish.adultTone ? 74 : 72;
+  const progressStage = deriveBondProgressStage(DAO_LU, STAGE_ACTIVE, { intimacy, trust, loyalty, destiny });
 
   return {
     bondType: DAO_LU,
@@ -323,20 +1436,28 @@ function buildDaoLyuActorDraft(level: CultivationLevel, wish: BondWishStructType
     gender,
     age: 20 + Math.floor(Math.random() * 12),
     realm: level,
-    appearance: `${pick(vibe)}的气质先落在眼里，衣襟收得利落，眸色沉静，却总在看向你时多停一瞬。`,
+    appearance: wish.adultTone
+      ? `${pick(vibe)}的气质先落在眼里，衣襟收得利落，眸色沉静，看向你时却总像故意多停半息。`
+      : `${pick(vibe)}的气质先落在眼里，衣襟收得利落，眸色沉静，却总在看向你时多停一瞬。`,
     originSummary: `你曾许愿想遇到一个${compactText(rawWish, "能与你并肩走很远的人")}。此人像是顺着这份愿望，被因果慢慢推到了你面前。`,
     personalityTags: vibe,
     publicTraits,
-    hiddenTraits: wish.adultTone ? ["擅长在沉默里试探距离"] : ["把情绪藏得比刀锋还深"],
+    hiddenTraits: [
+      wish.adultTone ? "暧昧阈值:高" : "暧昧阈值:低",
+      `整活耐受:${wish.jokeTolerance}`,
+      ...desiredScenes.slice(0, 2).map((scene) => `偏好场景:${scene}`),
+      wish.adultTone ? "擅长在安静处把距离压近" : "把情绪藏得比刀锋还深",
+    ],
     speakingStyle,
     adultContentEnabled: wish.adultTone,
     summary: `你还没真正与此人走到命定一线，但风声和因果已经把对方推到了你身边。`,
     label: "天命道侣",
-    intimacy: 18,
-    trust: 52,
-    loyalty: 58,
-    destiny: 72,
+    intimacy,
+    trust,
+    loyalty,
+    destiny,
     mood: "试探",
+    progressStage,
   };
 }
 
@@ -368,6 +1489,7 @@ function buildDiscipleActorDraft(level: CultivationLevel) {
     loyalty: 38,
     destiny: 20,
     mood: "观望",
+    progressStage: "观望" as BondProgressStage,
   };
 }
 
@@ -398,6 +1520,7 @@ function serializeBond(bond: {
   id: number;
   bondType: string;
   stage: string;
+  progressStage: string;
   status: string;
   slotIndex: number | null;
   label: string;
@@ -440,6 +1563,7 @@ function serializeBond(bond: {
     id: bond.id,
     bondType: bond.bondType as BondType,
     stage: bond.stage as CharacterBondView["stage"],
+    progressStage: bond.progressStage as BondProgressStage,
     status: bond.status,
     slotIndex: bond.slotIndex ?? undefined,
     label: bond.label,
@@ -495,13 +1619,48 @@ function getBondEventInterval(bondType: BondType) {
 }
 
 function chooseEventBlueprint(bond: CharacterBondView, turn: number) {
-  const pool = bond.bondType === DAO_LU ? DAO_LU_EVENT_BLUEPRINTS : DISCIPLE_EVENT_BLUEPRINTS;
-  const affinity =
-    bond.bondType === DAO_LU
-      ? bond.intimacy + bond.trust + bond.destiny
-      : bond.trust + bond.loyalty + bond.intimacy;
-  const index = Math.abs(bond.id * 17 + turn * 13 + affinity) % pool.length;
-  return pool[index];
+  return chooseEventSelection(bond, turn).blueprint;
+}
+
+function buildProgressMilestoneSummary(
+  bond: CharacterBondView,
+  fromStage: BondProgressStage,
+  toStage: BondProgressStage,
+) {
+  if (bond.bondType === DAO_LU) {
+    return `${bond.actor.name}与你的关系从“${fromStage}”推到“${toStage}”。${describeBondProgressStage(DAO_LU, toStage)}`;
+  }
+  return `${bond.actor.name}与你这一脉的师徒关系从“${fromStage}”走到“${toStage}”。${describeBondProgressStage(DISCIPLE, toStage)}`;
+}
+
+function buildBondStatePatch(
+  bond: CharacterBondView,
+  result: Pick<BondChatResult, "intimacyDelta" | "trustDelta" | "loyaltyDelta" | "destinyDelta" | "mood" | "relationshipSummary">,
+  turn: number,
+  nextEventTurn: number,
+) {
+  const nextStats = {
+    intimacy: clamp(bond.intimacy + result.intimacyDelta, 0, 100),
+    trust: clamp(bond.trust + result.trustDelta, 0, 100),
+    loyalty: clamp(bond.loyalty + result.loyaltyDelta, 0, 100),
+    destiny: clamp(bond.destiny + result.destinyDelta, 0, 100),
+  };
+  const nextProgressStage = deriveBondProgressStage(bond.bondType, bond.stage, nextStats);
+  return {
+    data: {
+      mood: compactText(result.mood, bond.mood),
+      summary: compactText(result.relationshipSummary, bond.summary || ""),
+      intimacy: nextStats.intimacy,
+      trust: nextStats.trust,
+      loyalty: nextStats.loyalty,
+      destiny: nextStats.destiny,
+      progressStage: nextProgressStage,
+      lastInteractionTurn: turn,
+      nextEventTurn,
+    } satisfies Prisma.CharacterBondUpdateInput,
+    stageChanged: nextProgressStage !== bond.progressStage,
+    nextProgressStage,
+  };
 }
 
 function buildFallbackEventResult(bond: CharacterBondView, turn: number): BondEventResponseType {
@@ -532,7 +1691,7 @@ async function generateBondEventResult(bond: CharacterBondView, turn: number): P
   try {
     const modelInstance = createModelFromConfig(config.model);
     const providerOptions = getProviderOptions(config.model, config);
-    const eventBlueprint = chooseEventBlueprint(bond, turn);
+    const eventSelection = chooseEventSelection(bond, turn);
     const recentMemories = bond.memories
       .slice(0, 6)
       .map((item) => `- ${item.summary}`)
@@ -542,14 +1701,20 @@ async function generateBondEventResult(bond: CharacterBondView, turn: number): P
       .replace(/\{BOND_STATE\}/g, JSON.stringify({
         bondType: bond.bondType,
         label: bond.label,
+        progressStage: bond.progressStage,
+        progressSummary: describeBondProgressStage(bond.bondType, bond.progressStage),
         mood: bond.mood,
         intimacy: bond.intimacy,
         trust: bond.trust,
         loyalty: bond.loyalty,
         destiny: bond.destiny,
+        adultTone: bond.actor.adultContentEnabled,
       }))
       .replace(/\{RECENT_MEMORIES\}/g, recentMemories || "暂无最近记忆")
-      .replace(/\{EVENT_BLUEPRINT\}/g, JSON.stringify(eventBlueprint))
+      .replace(/\{EVENT_BLUEPRINT\}/g, JSON.stringify({
+        ...eventSelection.blueprint,
+        branchPath: eventSelection.branchPath,
+      }))
       .replace(/\{FALLBACK_HINT\}/g, JSON.stringify(fallback));
     const { object } = await stableGenerateObject({
       model: modelInstance(config.model.name),
@@ -646,6 +1811,7 @@ async function createBondActorWithRelation(
       actorId: actor.id,
       bondType: draft.bondType,
       stage,
+      progressStage: draft.progressStage,
       status: "ACTIVE",
       slotIndex,
       label: draft.label,
@@ -705,6 +1871,26 @@ async function loadRuntime(characterId: number, db: DbClient) {
   });
 }
 
+async function syncBondProgressStages(
+  db: DbClient,
+  bonds: NonNullable<Awaited<ReturnType<typeof loadRuntime>>>["bonds"],
+) {
+  for (const bond of bonds) {
+    const expected = deriveBondProgressStage(bond.bondType as BondType, bond.stage, {
+      intimacy: bond.intimacy,
+      trust: bond.trust,
+      loyalty: bond.loyalty,
+      destiny: bond.destiny,
+    });
+    if (bond.progressStage !== expected) {
+      await db.characterBond.update({
+        where: { id: bond.id },
+        data: { progressStage: expected },
+      });
+    }
+  }
+}
+
 async function fulfillDaoLyuWish(
   db: DbClient,
   characterId: number,
@@ -725,7 +1911,7 @@ async function fulfillDaoLyuWish(
     db,
     bond.id,
     "SYSTEM",
-    `${draft.name}顺着你许下的愿望出现，自此与你结成了一段说不清来历、却很难撇开的道缘。`,
+    `${draft.name}顺着你许下的愿望出现，自此与你结成了一段说不清来历、却很难撇开的道缘，关系落在“${draft.progressStage}”。`,
     "试探",
     3,
   );
@@ -773,25 +1959,31 @@ async function triggerBondEvent(
 ) {
   const serializedBond = serializeBond(bond);
   const result = await generateBondEventResult(serializedBond, turn);
+  const eventSelection = chooseEventSelection(serializedBond, turn);
   const payload = {
     title: compactText(result.title, "关系异动"),
     storyHook: compactText(result.storyHook, ""),
-    eventType: chooseEventBlueprint(serializedBond, turn).key,
+    eventType: eventSelection.blueprint.key,
+    branchPath: eventSelection.branchPath.join(" > "),
     turn,
   } satisfies Prisma.InputJsonObject;
+  const patch = buildBondStatePatch(
+    serializedBond,
+    {
+      intimacyDelta: result.intimacyDelta,
+      trustDelta: result.trustDelta,
+      loyaltyDelta: result.loyaltyDelta,
+      destinyDelta: result.destinyDelta,
+      mood: compactText(result.mood, serializedBond.mood),
+      relationshipSummary: compactText(result.relationshipSummary, serializedBond.summary || ""),
+    },
+    turn,
+    turn + getBondEventInterval(serializedBond.bondType),
+  );
 
   await db.characterBond.update({
     where: { id: bond.id },
-    data: {
-      mood: compactText(result.mood, bond.mood),
-      summary: compactText(result.relationshipSummary, bond.summary || ""),
-      intimacy: clamp(bond.intimacy + result.intimacyDelta, 0, 100),
-      trust: clamp(bond.trust + result.trustDelta, 0, 100),
-      loyalty: clamp(bond.loyalty + result.loyaltyDelta, 0, 100),
-      destiny: clamp(bond.destiny + result.destinyDelta, 0, 100),
-      lastInteractionTurn: turn,
-      nextEventTurn: turn + getBondEventInterval(serializedBond.bondType),
-    },
+    data: patch.data,
   });
 
   await addBondMemory(
@@ -803,6 +1995,22 @@ async function triggerBondEvent(
     2,
     payload,
   );
+
+  if (patch.stageChanged) {
+    await addBondMemory(
+      db,
+      bond.id,
+      "MILESTONE",
+      buildProgressMilestoneSummary(serializedBond, serializedBond.progressStage, patch.nextProgressStage),
+      compactText(result.mood, serializedBond.mood),
+      3,
+      {
+        fromStage: serializedBond.progressStage,
+        toStage: patch.nextProgressStage,
+        turn,
+      },
+    );
+  }
 }
 
 async function maybeTriggerBondEvents(
@@ -845,7 +2053,7 @@ async function ensureBondRuntimeStateInternal(
   db: DbClient,
   overrideTurn?: number,
 ) {
-  const runtime = await loadRuntime(characterId, db);
+  let runtime = await loadRuntime(characterId, db);
   if (!runtime?.currentPush?.status) {
     return runtime;
   }
@@ -858,6 +2066,12 @@ async function ensureBondRuntimeStateInternal(
   const status = statusResult.data;
   const level = status.等级;
   const turn = overrideTurn ?? getCurrentTurn(status);
+
+  await syncBondProgressStages(db, runtime.bonds);
+  runtime = await loadRuntime(characterId, db);
+  if (!runtime) {
+    return runtime;
+  }
 
   const activeDaoLyu = runtime.bonds.find((bond) => bond.bondType === DAO_LU && bond.stage === STAGE_ACTIVE);
   const activeWish = runtime.bondWishes.find((wish) => wish.wishType === DAO_LU && wish.status === WISH_ACTIVE);
@@ -902,12 +2116,17 @@ function buildHighlights(
     highlights.push(`${featuredEvent.actorName}这边有新动静：${featuredEvent.title}。`);
   }
   if (activeDaoLyu) {
-    highlights.push(`${activeDaoLyu.actor.name}此刻与你的气氛偏“${activeDaoLyu.mood}”。`);
+    highlights.push(`${activeDaoLyu.actor.name}已走到“${activeDaoLyu.progressStage}”，此刻气氛偏“${activeDaoLyu.mood}”。`);
   } else if (wish?.targetEncounterTurn) {
     highlights.push(`你许下的道侣愿望将在第${wish.targetEncounterTurn}回合前后应验。`);
   }
   if (activeDisciples.length) {
-    highlights.push(`门下现有${activeDisciples.length}名弟子在跟着你长见识。`);
+    const seniorDisciple = activeDisciples.find((item) => item.progressStage === "得力" || item.progressStage === "倚重");
+    highlights.push(
+      seniorDisciple
+        ? `门下现有${activeDisciples.length}名弟子，其中${seniorDisciple.actor.name}已走到“${seniorDisciple.progressStage}”。`
+        : `门下现有${activeDisciples.length}名弟子在跟着你长见识。`,
+    );
   } else if (candidates.length) {
     highlights.push(`门墙外已有${candidates.length}名候选晚辈在等你点头。`);
   }
@@ -965,7 +2184,7 @@ export async function getBondUiData(
       nextMajorEvent: featuredEvent
         ? `${featuredEvent.actorName}：${featuredEvent.title}`
         : serializedDaoLyu
-        ? `${serializedDaoLyu.actor.name}常伴左右`
+        ? `${serializedDaoLyu.actor.name}常伴左右 · ${serializedDaoLyu.progressStage}`
         : serializedWish?.targetEncounterTurn
           ? `第${serializedWish.targetEncounterTurn}回合前后，愿中之人会出现`
           : isLevelAtLeast(level, "筑基")
@@ -1001,14 +2220,14 @@ export async function getBondNarrativeContext(characterId: number, overrideTurn?
   }
 
   const daoLyuSummary = payload.activeDaoLyu
-    ? `${payload.activeDaoLyu.actor.name}（${payload.activeDaoLyu.label}）如今常在你身边，眼下情绪偏${payload.activeDaoLyu.mood}。${payload.activeDaoLyu.summary || payload.activeDaoLyu.actor.originSummary}`
+    ? `${payload.activeDaoLyu.actor.name}（${payload.activeDaoLyu.label} / ${payload.activeDaoLyu.progressStage}）如今常在你身边，眼下情绪偏${payload.activeDaoLyu.mood}。${payload.activeDaoLyu.summary || payload.activeDaoLyu.actor.originSummary}`
     : payload.activeWish
       ? `你曾在突破后许下道侣心愿：${payload.activeWish.rawWish}。缘分尚未落定，但可以通过见闻、流言、同路人与因果暗线慢慢逼近。`
       : "眼下还没有真正落定的道侣关系。";
 
   const discipleSummary = payload.activeDisciples.length
     ? payload.activeDisciples
-      .map((item) => `${item.actor.name}（${item.actor.realm}，${item.mood}）`)
+      .map((item) => `${item.actor.name}（${item.actor.realm}，${item.progressStage}，${item.mood}）`)
       .join("；")
     : payload.discipleCandidates.length
       ? `门墙外已有${payload.discipleCandidates.length}名候选晚辈在观望。`
@@ -1029,6 +2248,7 @@ export async function getBondNarrativeContext(characterId: number, overrideTurn?
       "不要直接暴露亲密、信任、忠诚等隐藏数值。",
       "通过插话、陪行、来信、汇报、吃醋、护短、顶嘴、试探等方式侧写关系。",
       "道侣应当像长期陪伴者，而不是一次性彩蛋。",
+      "若道侣已进入相偎、缠心、同契，可用理衣、借伞、贴肩、低声警告、亲手上药等克制动作表现成年人拉扯，但不要露骨。",
       "弟子应当有性格和毛病，不要写成没有记忆点的背景板。",
     ].join("\n"),
   };
@@ -1103,20 +2323,36 @@ export async function acceptDiscipleCandidate(characterId: number, bondId: numbe
   while (occupied.has(slotIndex)) {
     slotIndex += 1;
   }
+  const trust = clamp(candidate.trust + 12, 0, 100);
+  const loyalty = clamp(candidate.loyalty + 16, 0, 100);
+  const progressStage = deriveBondProgressStage(DISCIPLE, STAGE_ACTIVE, {
+    intimacy: candidate.intimacy,
+    trust,
+    loyalty,
+    destiny: candidate.destiny,
+  });
 
   await prisma.characterBond.update({
     where: { id: bondId },
     data: {
       stage: STAGE_ACTIVE,
+      progressStage,
       slotIndex,
       label: slotIndex === 1 ? "首徒" : `门下弟子${slotIndex}`,
-      trust: clamp(candidate.trust + 12, 0, 100),
-      loyalty: clamp(candidate.loyalty + 16, 0, 100),
+      trust,
+      loyalty,
       summary: "你已正式点头收下此人，对方开始以你的名义行走和受训。",
       nextEventTurn: currentTurn + 2,
     },
   });
-  await addBondMemory(prisma, bondId, "SYSTEM", "你点头收徒，对方从候选晚辈正式成了门下弟子。", "敬服", 2);
+  await addBondMemory(
+    prisma,
+    bondId,
+    "SYSTEM",
+    `你点头收徒，对方从候选晚辈正式成了门下弟子，关系阶段落在“${progressStage}”。`,
+    "敬服",
+    2,
+  );
 
   return getBondUiData(characterId);
 }
@@ -1146,10 +2382,17 @@ export async function dismissDiscipleCandidate(characterId: number, bondId: numb
 
 function buildFallbackChatResult(message: string, bond: CharacterBondView): BondChatResult {
   const trimmed = compactText(message, "你没有说出口的话");
+  const daoLyuReply = bond.actor.adultContentEnabled && (bond.progressStage === "相偎" || bond.progressStage === "缠心" || bond.progressStage === "同契")
+    ? `${bond.actor.name}看了你一会儿，嗓音压得很低：“${trimmed.slice(0, 20)}……行。你别再一个人硬扛，我会先把你按稳，再陪你把后面的路走完。”`
+    : `${bond.actor.name}听完后沉了片刻，低声道：“${trimmed.slice(0, 22)}……我记住了。你若真要走这一步，我陪着你。”`;
   return {
-    reply: `${bond.actor.name}听完后沉了片刻，低声道：“${trimmed.slice(0, 22)}……我记住了。你若真要走这一步，我陪着你。”`,
+    reply: bond.bondType === DAO_LU
+      ? daoLyuReply
+      : `${bond.actor.name}抿了抿唇，还是先把腰板站直：“${trimmed.slice(0, 18)}……弟子记住了。你开口的事，我会先去做，再回来给你交代。”`,
     mood: bond.bondType === DAO_LU ? "靠近" : "认真",
-    relationshipSummary: bond.bondType === DAO_LU ? "你们之间的距离比方才更近了一寸。" : "对方把你的话记得很重，敬意也更实了一层。",
+    relationshipSummary: bond.bondType === DAO_LU
+      ? `你们之间的距离比方才更近了一寸，关系仍停在“${bond.progressStage}”，却已经比刚才更烫。`
+      : `对方把你的话记得很重，师徒关系停在“${bond.progressStage}”，敬意也更实了一层。`,
     memorySummary: `你与${bond.actor.name}谈及“${trimmed.slice(0, 18)}”，彼此的态度都比先前更明朗。`,
     intimacyDelta: bond.bondType === DAO_LU ? 2 : 0,
     trustDelta: 2,
@@ -1192,11 +2435,14 @@ export async function sendBondChatMessage(characterId: number, bondId: number, m
         .replace(/\{BOND_STATE\}/g, JSON.stringify({
           bondType: bond.bondType,
           label: bond.label,
+          progressStage: bond.progressStage,
+          progressSummary: describeBondProgressStage(bond.bondType, bond.progressStage),
           mood: bond.mood,
           intimacy: bond.intimacy,
           trust: bond.trust,
           loyalty: bond.loyalty,
           destiny: bond.destiny,
+          adultTone: bond.actor.adultContentEnabled,
         }))
         .replace(/\{RECENT_MEMORIES\}/g, recentMemories || "暂无最近记忆")
         .replace(/\{FALLBACK_HINT\}/g, JSON.stringify(fallback));
@@ -1214,18 +2460,23 @@ export async function sendBondChatMessage(characterId: number, bondId: number, m
     }
   }
 
+  const patch = buildBondStatePatch(
+    bond,
+    {
+      intimacyDelta: result.intimacyDelta,
+      trustDelta: result.trustDelta,
+      loyaltyDelta: result.loyaltyDelta,
+      destinyDelta: result.destinyDelta,
+      mood: compactText(result.mood, bond.mood),
+      relationshipSummary: compactText(result.relationshipSummary, bond.summary || ""),
+    },
+    currentTurn,
+    Math.min(bond.nextEventTurn ?? Number.MAX_SAFE_INTEGER, currentTurn + 2),
+  );
+
   await prisma.characterBond.update({
     where: { id: bondId },
-    data: {
-      mood: compactText(result.mood, bond.mood),
-      summary: compactText(result.relationshipSummary, bond.summary || ""),
-      intimacy: clamp(bond.intimacy + result.intimacyDelta, 0, 100),
-      trust: clamp(bond.trust + result.trustDelta, 0, 100),
-      loyalty: clamp(bond.loyalty + result.loyaltyDelta, 0, 100),
-      destiny: clamp(bond.destiny + result.destinyDelta, 0, 100),
-      lastInteractionTurn: currentTurn,
-      nextEventTurn: Math.min(bond.nextEventTurn ?? Number.MAX_SAFE_INTEGER, currentTurn + 2),
-    },
+    data: patch.data,
   });
   await addBondMemory(
     prisma,
@@ -1240,6 +2491,21 @@ export async function sendBondChatMessage(characterId: number, bondId: number, m
       turn: currentTurn,
     },
   );
+  if (patch.stageChanged) {
+    await addBondMemory(
+      prisma,
+      bondId,
+      "MILESTONE",
+      buildProgressMilestoneSummary(bond, bond.progressStage, patch.nextProgressStage),
+      compactText(result.mood, bond.mood),
+      3,
+      {
+        fromStage: bond.progressStage,
+        toStage: patch.nextProgressStage,
+        turn: currentTurn,
+      },
+    );
+  }
 
   return {
     result: {

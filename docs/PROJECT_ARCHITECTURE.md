@@ -198,10 +198,14 @@ flowchart TD
   F --> H["在角色页/剧情页/缘簿页展示"]
   H --> I["私语聊天写入 BondMemory"]
   I --> M["按冷却触发关系事件并生成 story hook"]
+  M --> N{"是否跨过关系阶段阈值"}
+  N -->|是| O["写入阶段升级记忆并刷新关系摘要/UI"]
+  N -->|否| G
   A --> J["角色达到金丹"]
   J --> K["按槽位刷新候选弟子"]
   K --> L["玩家收徒或暂不点头"]
-  L --> G
+  L --> P["按信任/忠诚更新弟子关系阶段"]
+  P --> G
 ```
 
 ## 6. 数据模型
@@ -220,7 +224,7 @@ flowchart TD
 | `FactionMission` | 帮派派给玩家的任务与奖励 |
 | `WorldEvent` | 战争、结盟、占领、任务完成等世界事件 |
 | `BondActor` | 关系 NPC 的静态画像 |
-| `CharacterBond` | 道侣/弟子的运行态关系、阶段、数值与摘要 |
+| `CharacterBond` | 道侣/弟子的运行态关系、lifecycle 阶段、关系进展阶段、数值与摘要 |
 | `BondMemory` | 关系记忆摘要与聊天片段 |
 | `BondWish` | 道侣愿望、结构化偏好与兑现状态 |
 | `GamePush` | 每一步剧情推进节点 |
@@ -238,6 +242,7 @@ flowchart TD
 - `Character.gamePush[]` 保存推进历史
 - `Character.factionState` 维护帮派身份、贡献、当前任务
 - `CharacterBond.actorId` 把静态 NPC 画像与关系运行态拆开
+- `CharacterBond.progressStage` 独立表示“牵丝 / 相偎 / 缠心 / 同契”或“入门 / 亲随 / 得力 / 倚重”
 - `BondMemory.bondId` 维护关系对话与关键事件摘要
 - `BondWish.fulfilledBondId` 把“许愿”与“兑现后的道侣”串起来
 - `GamePush.fatherId` 形成推进树
@@ -330,8 +335,9 @@ cookie、`localStorage`、Recoil 同时存在，SSR/CSR 一致性仍有维护成
 
 当前 bond 系统也沿用相同边界：
 
-- 代码控制解锁、槽位、候选刷新、愿望兑现、数值结算、记忆裁剪
+- 代码控制解锁、槽位、候选刷新、愿望兑现、关系阶段阈值、树状事件分支、数值结算、记忆裁剪
 - LLM 只负责愿望结构化、私语回复、关系事件包装与剧情风味
+- 成年道侣线允许更明显但仍克制的暧昧拉扯；弟子线只增强玩梗、闯祸、护短和求夸
 
 这保证了“道侣一定兑现”“弟子槽位稳定”“主循环不被关系系统抢走控制权”。
 
