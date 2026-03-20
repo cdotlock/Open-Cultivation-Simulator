@@ -7,6 +7,7 @@ export * from './const';
 export * from './schemas';
 export * from './dto';
 export * from './faction';
+export * from './bond';
 
 export type CharacterDescriptionType = {
   所属帮派?: string;
@@ -44,6 +45,7 @@ export type BaseGamePush = Omit<GamePush, 'info' | 'status'> & {
 export type CharacterWithGamePush = BaseCharacter & {
   currentPush: BaseGamePush | null;
   factionData?: import('./faction').FactionUiPayload;
+  bondData?: import('./bond').BondUiPayload;
 };
 
 export type CharacterWithGamePushList = {

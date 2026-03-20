@@ -20,6 +20,7 @@ import {
   maybeAdvanceFactionWorldTurn,
   recordFactionActionOutcome,
 } from "./factionSystem";
+import { getBondNarrativeContext, maybeAdvanceBondWorld } from "./bondSystem";
 
 export class GamePushService {
     private static preloadTasks = new Map<string, Promise<GamePush[]>>();
@@ -39,7 +40,8 @@ export class GamePushService {
         characterDescription: Record<string, unknown>,
         choice?: string,
         success?: boolean,
-        factionContext?: Record<string, string>
+        factionContext?: Record<string, string>,
+        bondContext?: Record<string, string>
     ) {
         const restDescription = { ...characterDescription };
         delete restDescription.初始属性;
@@ -81,6 +83,7 @@ export class GamePushService {
             FACTION_RELATIONS: factionContext?.FACTION_RELATIONS || "暂无显著势力关系。",
             RECENT_WORLD_EVENTS: factionContext?.RECENT_WORLD_EVENTS || "最近天下无足以左右剧情的大事。",
             ACTIVE_FACTION_MISSIONS: factionContext?.ACTIVE_FACTION_MISSIONS || "暂无帮派任务。",
+            RELATIONSHIP_SUMMARY: bondContext?.RELATIONSHIP_SUMMARY || "眼下暂无真正牵动主角命数的长期关系。",
         };
 
         let systemPrompt = config.systemPrompt || '';
@@ -115,6 +118,26 @@ export class GamePushService {
 
             if (!userPrompt.includes("帮派呈现规则")) {
                 userPrompt += `\n\n${revealRule}`;
+            }
+        }
+
+        if (bondContext) {
+            const relationshipSection = [
+                "## 关系上下文",
+                variables.RELATIONSHIP_SUMMARY,
+            ].join("\n");
+
+            if (!userPrompt.includes("关系上下文")) {
+                userPrompt += `\n\n${relationshipSection}`;
+            }
+
+            const relationshipRule = [
+                "## 关系呈现规则",
+                bondContext.RELATIONSHIP_RULES || "通过人物态度、陪行、来信、插话、护短、顶嘴来呈现关系，不要直白播报隐藏数值。",
+            ].join("\n");
+
+            if (!userPrompt.includes("关系呈现规则")) {
+                userPrompt += `\n\n${relationshipRule}`;
             }
         }
 
@@ -173,6 +196,7 @@ export class GamePushService {
     async startGame(character: Character, currentStatus: CharacterStatusType): Promise<{ push: GamePush; delta: StatusDelta }> {
         const dynamicInput = `当前角色状态: ${formatStatusForLLM(currentStatus)}`;
         const factionContext = await getFactionNarrativeContext(character.id);
+        const bondContext = await getBondNarrativeContext(character.id);
         const result = await this.createGamePush(
             character.id,
             character.currentPushId!,
@@ -181,7 +205,8 @@ export class GamePushService {
             character.description as Record<string, unknown> || {},
             undefined,
             undefined,
-            factionContext
+            factionContext,
+            bondContext
         );
 
         result.push = await this.preloadService.addPrerollToGamePush(
@@ -201,9 +226,11 @@ export class GamePushService {
     ): Promise<{ push: GamePush; delta: StatusDelta }> {
         const nextPlayerTurn = this.calculateTurnCount(currentStatus) + 1;
         await maybeAdvanceFactionWorldTurn(character.id, nextPlayerTurn);
+        await maybeAdvanceBondWorld(character.id, nextPlayerTurn);
 
         const gameContext = await compressMemoryIfNeeded(character.id);
         const factionContext = await getFactionNarrativeContext(character.id);
+        const bondContext = await getBondNarrativeContext(character.id);
         const dynamicInput = `
         当前角色状态: ${formatStatusForLLM(currentStatus)}
         ${gameContext}
@@ -217,7 +244,8 @@ export class GamePushService {
             character.description as Record<string, unknown> || {},
             choice,
             success,
-            factionContext
+            factionContext,
+            bondContext
         );
 
         result.push = await this.preloadService.addPrerollToGamePush(
@@ -403,7 +431,11 @@ export class GamePushService {
         character: Character,
         currentPush: GamePush,
         currentStatus: CharacterStatusType
-    ): Promise<void> {
+    ): Promise<CharacterStatusType & {
+        _breakthrough?: boolean;
+        _breakthroughSuccess?: boolean;
+        _breakthroughMessage?: string;
+    }> {
         if (!character.userUuid) {
             throw new Error("用户UUID为空");
         }
@@ -423,6 +455,8 @@ export class GamePushService {
                     where: { id: currentPush.id },
                     data: { status: statusWithBreakthrough }
                 });
+
+                return statusWithBreakthrough;
             }
         } catch (error) {
             console.error("突破失败:", error);
@@ -437,6 +471,15 @@ export class GamePushService {
                 where: { id: currentPush.id },
                 data: { status: statusWithBreakthrough }
             });
+
+            return statusWithBreakthrough;
         }
+
+        return {
+            ...currentStatus,
+            _breakthrough: true,
+            _breakthroughSuccess: false,
+            _breakthroughMessage: "突破失败，请稍后重试"
+        };
     }
 }

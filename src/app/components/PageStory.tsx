@@ -13,6 +13,8 @@ import useRoute from "../hooks/useRoute";
 import DiceAnimate2 from "./DiceAnimate2";
 import { trackEvent, trackPageView, UmamiEvents } from "@/lib/analytics/umami";
 import { FactionStoryStrip } from "./faction/FactionPanels";
+import { BondStoryStrip } from "./bond/BondPanels";
+import { makeDaoLyuWish } from "../actions/bond/action";
 
 interface gameState {
   status: "streaming" | "loading" | "playing" | "breakthrough";
@@ -484,12 +486,40 @@ const StatusPlaying = ({ story, onNext, setGameState, imageUrl, showImage }: { s
   </div>
 }
 
-const StatusBreakthrough = ({ breakResult }: { breakResult: BreakthroughResponse; }) =>{
+const StatusBreakthrough = ({
+  breakResult,
+  canWish,
+  characterId,
+  onWishCompleted,
+}: {
+  breakResult: BreakthroughResponse;
+  canWish: boolean;
+  characterId: number;
+  onWishCompleted: (payload: unknown) => void;
+}) =>{
   const { routerTo } = useRoute();
+  const [wishText, setWishText] = useState("");
+  const [isSubmittingWish, setIsSubmittingWish] = useState(false);
 
   const handleContinue = useCallback(() => {
+    if (canWish) {
+      return;
+    }
     routerTo("home");
-  }, [routerTo])
+  }, [canWish, routerTo])
+
+  const handleSubmitWish = useCallback(async () => {
+    if (!canWish || !wishText.trim()) {
+      return;
+    }
+    setIsSubmittingWish(true);
+    try {
+      const payload = await makeDaoLyuWish(characterId, wishText.trim());
+      onWishCompleted(payload);
+    } finally {
+      setIsSubmittingWish(false);
+    }
+  }, [canWish, characterId, onWishCompleted, wishText]);
 
   return (
   <div className="p-[24px] text-sm text-[#524a37] flex flex-col items-center">
@@ -507,9 +537,32 @@ const StatusBreakthrough = ({ breakResult }: { breakResult: BreakthroughResponse
       dangerouslySetInnerHTML={{ __html: breakResult?.message || "" }}
     >
     </div>
+
+    {canWish ? (
+      <div className="mt-8 w-full max-w-[420px] rounded-[22px] border border-[rgba(130,89,56,0.18)] bg-[rgba(255,248,236,0.9)] px-4 py-4">
+        <div className="text-[12px] tracking-[0.18em] text-[#7d5b37]">筑基已成 · 向天道许一人</div>
+        <div className="mt-2 text-[13px] leading-[1.8] text-[#5a4630]">
+          写下你想要的道侣。愿望不必克制，因果会替你慢慢兑现。
+        </div>
+        <textarea
+          className="mt-3 min-h-[120px] w-full rounded-[18px] border border-[rgba(130,89,56,0.16)] bg-[rgba(255,255,255,0.76)] px-4 py-3 text-[14px] leading-[1.8] text-[#3f3123] focus:outline-none"
+          placeholder="例如：我想要一个清冷但护短、会在我最狼狈时守灯等我的人。"
+          value={wishText}
+          onChange={(event) => setWishText(event.target.value)}
+        />
+        <button
+          type="button"
+          onClick={handleSubmitWish}
+          disabled={!wishText.trim() || isSubmittingWish}
+          className="mt-3 w-full rounded-full bg-[rgba(82,52,28,0.92)] px-4 py-3 text-[13px] tracking-[0.14em] text-[#f8ead0] disabled:opacity-50"
+        >
+          {isSubmittingWish ? "因果推演中..." : "许下此愿"}
+        </button>
+      </div>
+    ) : null}
     
     {/* 继续按钮 */}
-    <div className="mt-16 w-[188px]" onClick={handleContinue}>
+    <div className={`mt-16 w-[188px] ${canWish ? "opacity-50" : ""}`} onClick={handleContinue}>
       <img src={$img('newStory/break-btn-continue')} alt="继续" />
     </div>
   </div>
@@ -563,6 +616,12 @@ const PageStory= () => {
         // 检查是否有突破结果（通过状态中的特殊字段检测）
         const breakthroughStatus = res.newStatus as BreakthroughStatus;
         if (breakthroughStatus._breakthrough) {
+          if (res.factionData) {
+            setChar((previous) => previous ? { ...previous, factionData: res.factionData } : previous);
+          }
+          if (res.bondData) {
+            setChar((previous) => previous ? { ...previous, bondData: res.bondData } : previous);
+          }
           trackEvent(UmamiEvents.浏览突破页面, {
               success: breakthroughStatus._breakthroughSuccess,
             })
@@ -581,6 +640,9 @@ const PageStory= () => {
         setGamePush(res);
         if (res.factionData) {
           setChar((previous) => previous ? { ...previous, factionData: res.factionData } : previous);
+        }
+        if (res.bondData) {
+          setChar((previous) => previous ? { ...previous, bondData: res.bondData } : previous);
         }
 
         trackEvent(UmamiEvents.推进成功, {
@@ -642,6 +704,21 @@ const PageStory= () => {
       .catch(() => {});
   }, [char?.factionData, char?.id, setChar]);
 
+  useEffect(() => {
+    if (!char?.id || char.bondData) {
+      return;
+    }
+
+    fetch(`/api/bond-snapshot?characterId=${char.id}`)
+      .then((response) => response.json())
+      .then((result) => {
+        if (result) {
+          setChar((previous) => previous ? { ...previous, bondData: result } : previous);
+        }
+      })
+      .catch(() => {});
+  }, [char?.bondData, char?.id, setChar]);
+
   return (
     <div className="flex w-full flex-col items-center justify-start overflow-y-scroll pb-6 font-family-song text-[18px]"
       style={{ letterSpacing: '0.05em' }}>
@@ -651,6 +728,19 @@ const PageStory= () => {
           <FactionStoryStrip
             data={char.factionData}
             onOpenWorld={() => router.push(`/pages/world?characterId=${char.id}`)}
+          />
+        </div>
+      ) : null}
+      {char.bondData ? (
+        <div className="w-full max-w-[1240px] px-4 pt-2 xl:px-6">
+          <BondStoryStrip
+            data={char.bondData}
+            onOpenBonds={() => router.push(`/pages/bonds?characterId=${char.id}`)}
+            onOpenChat={() => {
+              if (char.bondData?.activeDaoLyu) {
+                router.push(`/pages/bond-chat?characterId=${char.id}&bondId=${char.bondData.activeDaoLyu.id}`);
+              }
+            }}
           />
         </div>
       ) : null}
@@ -667,7 +757,12 @@ const PageStory= () => {
       {gameState.status === "loading" && <StatusLoading loadingAnimateState={gameState.loadingAnimateState} />}
       {gameState.status === "breakthrough" && (
         <StatusBreakthrough 
-          breakResult={gameState.breakResult!} 
+          breakResult={gameState.breakResult!}
+          canWish={Boolean(char.bondData?.overview.canWishForDaoLyu)}
+          characterId={char.id}
+          onWishCompleted={(payload) => {
+            setChar((previous) => previous ? { ...previous, bondData: payload as typeof previous.bondData } : previous);
+          }}
         />
       )}
     </div>

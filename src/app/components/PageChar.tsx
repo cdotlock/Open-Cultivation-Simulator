@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation"
 import { deleteCharacter } from '../actions/character/action';
 import { useUuid } from "../hooks/useLogin";
 import { FactionPortalCard } from "./faction/FactionPanels";
+import { BondPortalCard } from "./bond/BondPanels";
 
 function DetailSection({
   titleSrc,
@@ -64,6 +65,21 @@ export default function PageChar() {
       .catch(() => {});
   }, [char?.factionData, char?.id, setChar]);
 
+  useEffect(() => {
+    if (!char?.id || char.bondData) {
+      return;
+    }
+
+    fetch(`/api/bond-snapshot?characterId=${char.id}`)
+      .then((response) => response.json())
+      .then((result) => {
+        if (result) {
+          setChar((previous) => previous ? { ...previous, bondData: result } : previous);
+        }
+      })
+      .catch(() => {});
+  }, [char?.bondData, char?.id, setChar]);
+
   if (!char) {
     return <></>
   }
@@ -90,6 +106,7 @@ export default function PageChar() {
 
   const charStatus = char.currentPush.status as CharacterStatusType
   const factionData = char.factionData;
+  const bondData = char.bondData;
 
   // 提取身份信息
   const identityMatch = char.createPrompt.match(/身份是(.*?)，/)
@@ -101,6 +118,15 @@ export default function PageChar() {
   const cover = hasGeneratedCover ? char.cover : config.backgroundImage
   const openWorldPage = () => {
     router.push(`/pages/world?characterId=${char.id}`);
+  };
+  const openBondPage = () => {
+    router.push(`/pages/bonds?characterId=${char.id}`);
+  };
+  const openBondChatPage = () => {
+    if (!bondData?.activeDaoLyu) {
+      return;
+    }
+    router.push(`/pages/bond-chat?characterId=${char.id}&bondId=${bondData.activeDaoLyu.id}`);
   };
 
   // Add delete handler
@@ -196,6 +222,12 @@ export default function PageChar() {
           {factionData ? (
             <div className="mt-5">
               <FactionPortalCard data={factionData} onOpenWorld={openWorldPage} />
+            </div>
+          ) : null}
+
+          {bondData ? (
+            <div className="mt-5">
+              <BondPortalCard data={bondData} onOpenBonds={openBondPage} onOpenChat={openBondChatPage} />
             </div>
           ) : null}
 

@@ -1,7 +1,7 @@
 # MOB.AI 项目架构档案
 
-> 2026-03-12 更新：
-> 当前仓库已经完成 Phase 1 的开源单机化落地，并落地 Phase 2 的 faction/world 系统。运行时事实已经从“PostgreSQL + Redis + 远程配置 + 远程静态资源 + 支付/登录分支”切换到“SQLite + 本地配置 + 本地资源 + 单机默认用户 + `/mcp` + 帮派外循环世界模拟”。
+> 2026-03-20 更新：
+> 当前仓库已经完成 Phase 1 的开源单机化落地，完成 Phase 2 的 faction/world 系统，并进入 Phase 3 的 relationship/bond 层。运行时事实已经从“PostgreSQL + Redis + 远程配置 + 远程静态资源 + 支付/登录分支”切换到“SQLite + 本地配置 + 本地资源 + 单机默认用户 + `/mcp` + 帮派外循环世界模拟 + 统一 NPC Bond 底座”。
 
 ## 1. 当前定位
 
@@ -11,7 +11,7 @@ MOB.AI 当前是一个以修仙题材为核心的 AI 驱动叙事游戏仓库。
 - 本地配置和持久化驱动的服务端动作
 - 对外暴露给 agent 的 MCP / skills 接口
 
-这份文档记录的是“当前事实架构”，用于后续继续迭代 faction/world 层。
+这份文档记录的是“当前事实架构”，用于后续继续迭代 faction/world 与 relationship/bond 层。
 
 ## 2. 技术栈与运行时
 
@@ -71,21 +71,26 @@ MOB.AI 当前是一个以修仙题材为核心的 AI 驱动叙事游戏仓库。
   - 灵根、属性点、姓名、角色背景创建。
 - `src/app/components/PageChar.tsx`
   - 角色档案、立绘、开始修行入口。
+  - 当前也承载 faction 与 bond 的轻量入口。
 - `src/app/components/PageStory.tsx`
   - 剧情展示、掷骰演出、选项推进、自定义输入、死亡/突破跳转。
+  - 在突破成功后承载“道侣许愿”强制节点，并展示关系侧栏摘要。
 - `src/app/pages/*`
   - 独立路由页，目前保留历史、设置、死亡、头像、世界地图等页面。
+  - 关系系统新增 `pages/bonds` 与 `pages/bond-chat`。
 
 ### 4.3 服务端动作层
 
 `src/app/actions/**` 是当前应用真正的后端接口层，核心包括：
 
 - `character/action.ts`
-  - 创建角色、获取角色、突破、复生，并在角色创建/读取时注入 faction 数据。
+  - 创建角色、获取角色、突破、复生，并在角色创建/读取时注入 faction / bond 数据。
 - `game/action.ts`
   - `startGame()`、`pushGame()`。
 - `faction/action.ts`
   - 读取角色对应的 faction 世界快照。
+- `bond/action.ts`
+  - 读取关系快照、提交道侣愿望、收徒/拒绝候选、私语聊天。
 - `settings/action.ts`
   - 本地模型配置、Prompt 模板、功能开关、连接测试。
 - `revive/action.ts`
@@ -100,15 +105,17 @@ MOB.AI 当前是一个以修仙题材为核心的 AI 驱动叙事游戏仓库。
 当前规则仍然没有被完全抽成独立 `domain/`，主要逻辑集中在：
 
 - `GameCharacterRefactored.ts`
-  - 主协调器，负责角色装载、推进、突破/死亡判定、current push 切换。
+  - 主协调器，负责角色装载、推进、突破/死亡判定、current push 切换，并在响应里注入 faction / bond 载荷。
 - `GamePushService.ts`
-  - 创建剧情推进、调用 LLM、落库新 push，并把 faction 世界上下文注入故事 Prompt。
+  - 创建剧情推进、调用 LLM、落库新 push，并把 faction / bond 世界上下文注入故事 Prompt。
 - `OptionService.ts`
   - 选项推进与预加载衔接。
 - `PreloadService.ts`
   - 给选项提前掷骰并准备结果。
 - `factionSystem.ts`
   - 负责世界生成、帮派关系、地图节点、帮派任务、外循环 world turn、旧存档补建与 UI payload 组装。
+- `bondSystem.ts`
+  - 负责统一 NPC Bond 底座、道侣愿望兑现、弟子候选刷新、关系记忆、聊天与剧情上下文注入。
 - `checkSystem.ts`
   - 2d6 检定规则。
 - `attributeSystem.ts`
@@ -178,6 +185,24 @@ flowchart TD
   K --> J
 ```
 
+### 5.4 关系外循环
+
+```mermaid
+flowchart TD
+  A["角色达到筑基"] --> B["突破成功后强制许愿"]
+  B --> C["写入 BondWish"]
+  C --> D["后续剧情推进时检查目标回合"]
+  D --> E{"道侣愿望是否兑现"}
+  E -->|是| F["生成 BondActor + CharacterBond"]
+  E -->|否| G["继续主剧情"]
+  F --> H["在角色页/剧情页/缘簿页展示"]
+  H --> I["私语聊天写入 BondMemory"]
+  A --> J["角色达到金丹"]
+  J --> K["按槽位刷新候选弟子"]
+  K --> L["玩家收徒或暂不点头"]
+  L --> G
+```
+
 ## 6. 数据模型
 
 ### 6.1 当前关键表
@@ -193,6 +218,10 @@ flowchart TD
 | `CharacterFactionState` | 玩家在帮派中的身份、贡献、信任、地位、当前节点 |
 | `FactionMission` | 帮派派给玩家的任务与奖励 |
 | `WorldEvent` | 战争、结盟、占领、任务完成等世界事件 |
+| `BondActor` | 关系 NPC 的静态画像 |
+| `CharacterBond` | 道侣/弟子的运行态关系、阶段、数值与摘要 |
+| `BondMemory` | 关系记忆摘要与聊天片段 |
+| `BondWish` | 道侣愿望、结构化偏好与兑现状态 |
 | `GamePush` | 每一步剧情推进节点 |
 | `StorySegment` | 与推进一对一的剧情片段快照 |
 | `Avatar` / `AvatarTask` | 角色头像与生成任务 |
@@ -204,11 +233,16 @@ flowchart TD
 
 - `Character.currentPushId` 指向当前剧情节点
 - `Character.worldId` 把角色接到 faction/world 层
+- `Character.bondActors / bonds / bondWishes` 把角色接到 relationship/bond 层
 - `Character.gamePush[]` 保存推进历史
 - `Character.factionState` 维护帮派身份、贡献、当前任务
+- `CharacterBond.actorId` 把静态 NPC 画像与关系运行态拆开
+- `BondMemory.bondId` 维护关系对话与关键事件摘要
+- `BondWish.fulfilledBondId` 把“许愿”与“兑现后的道侣”串起来
 - `GamePush.fatherId` 形成推进树
 - `StorySegment` 与 `GamePush` 一对一
 - `World -> Faction -> MapNode / FactionRelation / WorldEvent` 组成世界外循环骨架
+- `Character -> BondWish -> CharacterBond -> BondMemory` 组成长期关系外循环骨架
 - 复生不重建角色，而是重置状态并继续角色生命线
 
 ## 7. 配置与模型链路
@@ -291,13 +325,23 @@ cookie、`localStorage`、Recoil 同时存在，SSR/CSR 一致性仍有维护成
 
 当前帮派 AI 采用“代码掌控状态，LLM 负责叙事上下文”的混合模式。后续如果要继续增强自治深度，应保持这个边界，不要把可验证规则重新交还给模型。
 
-### 10.6 文档与代码要持续对齐
+### 10.6 关系系统同样采用代码控状态
+
+当前 bond 系统也沿用相同边界：
+
+- 代码控制解锁、槽位、候选刷新、愿望兑现、数值结算、记忆裁剪
+- LLM 只负责愿望结构化、私语回复与剧情风味
+
+这保证了“道侣一定兑现”“弟子槽位稳定”“主循环不被关系系统抢走控制权”。
+
+### 10.7 文档与代码要持续对齐
 
 旧支付/后台文档已经不再代表当前产品，后续开发应以 `README.md`、`docs/ROADMAP.md`、当前源码为准。
 
-## 11. 面向 Phase 2 的直接建议
+## 11. 面向后续 Phase 的直接建议
 
 - faction 不要重写主流程，而是作为世界上下文层插入
 - 地图先做节点图 / 区域图，不直接上复杂 tile map
 - world loop 要让代码掌握状态与结算，LLM 只负责意图和叙事增色
 - MCP 资源层后续可以直接补 faction/world 文档、世界状态摘要、地图资源
+- relationship/bond 后续也应继续沿用统一底座，不要把道侣和弟子拆成两套平行状态机

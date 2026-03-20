@@ -1,5 +1,6 @@
 import { CharacterDescriptionType, CharacterStatusType, StoryPushType, difficultyLevels, GameOptionType } from './schemas';
 import { FactionUiPayload } from './faction';
+import { BondUiPayload } from './bond';
 import { formatStatusWithMax } from '@/app/actions/character/constants';
 
 export type BaseResponse<T> = {
@@ -30,7 +31,11 @@ export interface FormattedCharacterStatus extends CharacterStatusType {
 export type GamePushResponse = {
     id: number;
     gamePush: StoryPushType;
-    newStatus: ReturnType<typeof formatStatusWithMax>;
+    newStatus: ReturnType<typeof formatStatusWithMax> & {
+        _breakthrough?: boolean;
+        _breakthroughSuccess?: boolean;
+        _breakthroughMessage?: string;
+    };
     statusDelta: StatusDelta;
     deathJudgement?: string;
     // 检定结果 每一次都一定判断是否成功了
@@ -51,6 +56,7 @@ export type GamePushResponse = {
         error?: string;
     };
     factionData?: FactionUiPayload;
+    bondData?: BondUiPayload;
 };
 
 export type PreAnalyzedOptionPayload = Pick<GameOptionType, '选项类别' | '选项难度'> & Partial<Pick<GameOptionType, '是否成功' | '骰子' | '成功率' | '基础DC' | '修正值' | '变动原因'>>;

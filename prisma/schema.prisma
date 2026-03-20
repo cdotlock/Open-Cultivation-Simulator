@@ -75,6 +75,9 @@ model Character {
   avatars               Avatar[]
   factionState          CharacterFactionState?
   factionMissions       FactionMission[]
+  bondActors            BondActor[]
+  bonds                 CharacterBond[]
+  bondWishes            BondWish[]
 }
 
 model Avatar {
@@ -367,4 +370,88 @@ model FactionMission {
   assignees             CharacterFactionState[] @relation("CharacterActiveMission")
 
   @@index([worldId, factionId, status])
+}
+
+model BondActor {
+  id                 Int      @id @default(autoincrement())
+  characterId        Int
+  character          Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  bondType           String
+  name               String
+  title              String?
+  gender             String
+  age                Int
+  realm              String
+  appearance         String
+  originSummary      String
+  personalityTags    Json
+  publicTraits       Json
+  hiddenTraits       Json?
+  speakingStyle      String
+  adultContentEnabled Boolean @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  bond               CharacterBond?
+
+  @@index([characterId, bondType])
+}
+
+model CharacterBond {
+  id                 Int      @id @default(autoincrement())
+  characterId        Int
+  character          Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  actorId            Int      @unique
+  actor              BondActor @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  bondType           String
+  stage              String
+  status             String   @default("ACTIVE")
+  slotIndex          Int?
+  label              String
+  intimacy           Int      @default(0)
+  trust              Int      @default(50)
+  loyalty            Int      @default(50)
+  destiny            Int      @default(0)
+  mood               String   @default("平静")
+  summary            String?
+  introducedAtTurn   Int?
+  lastInteractionTurn Int?
+  nextEventTurn      Int?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  memories           BondMemory[]
+
+  @@index([characterId, bondType, stage])
+  @@index([characterId, status])
+}
+
+model BondMemory {
+  id                 Int      @id @default(autoincrement())
+  bondId             Int
+  bond               CharacterBond @relation(fields: [bondId], references: [id], onDelete: Cascade)
+  sourceType         String
+  summary            String
+  mood               String?
+  importance         Int      @default(1)
+  payload            Json?
+  createdAt          DateTime @default(now())
+
+  @@index([bondId, createdAt])
+}
+
+model BondWish {
+  id                 Int      @id @default(autoincrement())
+  characterId        Int
+  character          Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  wishType           String
+  rawWish            String
+  structuredWish     Json?
+  status             String   @default("ACTIVE")
+  targetEncounterTurn Int?
+  fulfilledBondId    Int?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([characterId, wishType, status])
 }

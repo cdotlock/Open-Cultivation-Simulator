@@ -12,6 +12,7 @@ import { GamePushService } from "./GamePushService";
 import { OptionService } from "./OptionService";
 import { OptionWithPreroll } from "./PreloadService";
 import { getFactionUiData } from "./factionSystem";
+import { getBondUiData } from "./bondSystem";
 
 export class GameCharacterRefactored {
     character: Character;
@@ -128,6 +129,7 @@ export class GameCharacterRefactored {
 
             const startGameCheckResult = this.optionService.createDefaultCheckResult();
             const factionData = await getFactionUiData(this.id);
+            const bondData = await getBondUiData(this.id);
 
             return {
                 id: this.currentPush.id,
@@ -136,7 +138,8 @@ export class GameCharacterRefactored {
                 statusDelta: delta,
                 deathJudgement,
                 checkResult: startGameCheckResult,
-                factionData
+                factionData,
+                bondData
             };
         } catch (error) {
             await handleActionError(
@@ -279,25 +282,45 @@ export class GameCharacterRefactored {
             );
         }
         
-        const currentStatusSnapshot = this.currentStatus;
-        const statusDelta = calculateStatusDelta(this.cloneStatus, currentStatusSnapshot);
-        const factionData = await getFactionUiData(this.id);
+        let currentStatusSnapshot = this.currentStatus;
+        let statusDelta = calculateStatusDelta(this.cloneStatus, currentStatusSnapshot);
+        let factionData = await getFactionUiData(this.id);
+        let bondData = await getBondUiData(this.id);
 
         let response: GamePushResponse;
 
         if (shouldBreakthrough) {
             await this.gamePushService.performBreakthrough(this.character, this.currentPush, this.currentStatus);
+            const refreshedPush = await GameCharacterRefactored.loadCurrentPush(gamePush.id);
+            const rawBreakthroughStatus =
+                refreshedPush.status && typeof refreshedPush.status === "object"
+                    ? refreshedPush.status as Record<string, unknown>
+                    : {};
+            this.setCurrentPush(refreshedPush);
+            currentStatusSnapshot = this.currentStatus;
+            statusDelta = calculateStatusDelta(this.cloneStatus, currentStatusSnapshot);
+            factionData = await getFactionUiData(this.id);
+            bondData = await getBondUiData(this.id);
             response = {
                 id: gamePush.id,
                 gamePush: gamePush.info as StoryPushType,
-                newStatus: formatStatusWithMax(currentStatusSnapshot),
+                newStatus: {
+                    ...formatStatusWithMax(currentStatusSnapshot),
+                    _breakthrough: rawBreakthroughStatus._breakthrough === true,
+                    _breakthroughSuccess: rawBreakthroughStatus._breakthroughSuccess === true,
+                    _breakthroughMessage:
+                        typeof rawBreakthroughStatus._breakthroughMessage === "string"
+                            ? rawBreakthroughStatus._breakthroughMessage
+                            : undefined,
+                },
                 statusDelta,
                 deathJudgement: deathJudgement,
                 checkResult: {
                     success: selectedOption.是否成功 ?? false,
                     diceValues: selectedOption.骰子 ?? [1, 1]
                 },
-                factionData
+                factionData,
+                bondData
             };
         } else {
             response = {
@@ -310,12 +333,15 @@ export class GameCharacterRefactored {
                     success: selectedOption.是否成功 ?? false,
                     diceValues: selectedOption.骰子 ?? [1, 1]
                 },
-                factionData
+                factionData,
+                bondData
             };
         }
 
         this.cloneStatus = this.cloneStatusSnapshot(currentStatusSnapshot);
-        this.asyncPreloadNext(this.character, this.currentPush, currentStatusSnapshot);
+        if (!shouldBreakthrough) {
+            this.asyncPreloadNext(this.character, this.currentPush, currentStatusSnapshot);
+        }
 
         return response;
     }

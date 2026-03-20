@@ -22,6 +22,7 @@ import {
   persistPreparedFactionWorld,
   prepareFactionWorldDraft,
 } from "../module/factionSystem";
+import { getBondUiData } from "../module/bondSystem";
 
 
 /**
@@ -158,6 +159,7 @@ export async function createCharacter(
       await createCharacterFactionSetup(tx, factionDraft, persistedWorld, mainCharacter.id);
 
       const factionData = await getFactionUiData(mainCharacter.id, tx);
+      const bondData = await getBondUiData(mainCharacter.id, tx);
 
       return {
         ...updatedCharacter,
@@ -165,7 +167,8 @@ export async function createCharacter(
         sharedFromCharacterId: mainCharacter.id,
         currentPushId: mainCharacter.gamePush[0].id,
         currentPush: mainCharacter.gamePush[0] as BaseGamePush,
-        factionData
+        factionData,
+        bondData
       };
     });
 
@@ -327,12 +330,14 @@ export async function cloneSharedCharacter(characterId: number, newPlayerUUID: s
     }
 
     const factionData = await getFactionUiData(mainCharacter.id);
+    const bondData = await getBondUiData(mainCharacter.id);
 
     return {
       ...updatedCharacter,
       description: updatedCharacter.description as CharacterDescriptionType,
       currentPush: mainCharacter.gamePush[0] as BaseGamePush,
-      factionData
+      factionData,
+      bondData
     };
   });
 
@@ -370,6 +375,7 @@ export async function attemptBreakthrough(characterId: number, userUuid: string)
   const isSuccessful = Math.random() <= status.突破成功系数;
 
   if (isSuccessful) {
+    const nextLevel = cultivationLevels[currentLevelIndex + 1];
     // 从配置服务获取突破成功配置
     const config = await ConfigService.getConfig('breakthrough_success');
     
@@ -436,7 +442,7 @@ export async function attemptBreakthrough(characterId: number, userUuid: string)
       const { newStatus } = changeAttr(status, {
         节点要素: {
           基础信息: {
-            等级: status.等级,
+            等级: nextLevel,
             类型: "机缘",
             终极任务是否完成: true,
             当前任务: "突破"
@@ -459,6 +465,16 @@ export async function attemptBreakthrough(characterId: number, userUuid: string)
           }
         }
       });
+      const nextLimits = getAttributeLimitsByLevel(nextLevel);
+      const breakthroughStatus = {
+        ...newStatus,
+        等级: nextLevel,
+        体魄: nextLimits.体魄.max,
+        道心: Math.min(nextLimits.道心.max, newStatus.道心),
+        行动点: nextLimits.行动点.max,
+        突破成功系数: 0,
+        是否死亡: false,
+      };
 
       // 更新角色描述和状态
       await prisma.character.update({
@@ -468,13 +484,13 @@ export async function attemptBreakthrough(characterId: number, userUuid: string)
 
       await prisma.gamePush.update({
         where: { id: gameCharacter.currentPush.id },
-        data: { status: newStatus }
+        data: { status: breakthroughStatus }
       });
 
       return {
         success: true,
-        newStatus: formatStatusWithMax(newStatus),
-        message: `突破成功！修为提升至 ${newStatus.等级}，道心+0.5`,
+        newStatus: formatStatusWithMax(breakthroughStatus),
+        message: `突破成功！修为提升至 ${breakthroughStatus.等级}`,
         newDescription: result.object
       };
     });
@@ -569,6 +585,12 @@ export async function attemptBreakthrough(characterId: number, userUuid: string)
           }
         }
       });
+      const currentLimits = getAttributeLimitsByLevel(status.等级);
+      const failedStatus = {
+        ...newStatus,
+        行动点: currentLimits.行动点.max,
+        是否死亡: false,
+      };
 
       // 更新角色描述和状态
       await prisma.character.update({
@@ -578,12 +600,12 @@ export async function attemptBreakthrough(characterId: number, userUuid: string)
 
       await prisma.gamePush.update({
         where: { id: gameCharacter.currentPush.id },
-        data: { status: newStatus }
+        data: { status: failedStatus }
       });
 
       return {
         success: false,
-        newStatus: formatStatusWithMax(newStatus),
+        newStatus: formatStatusWithMax(failedStatus),
         message: "突破失败，突破成功系数+0.05",
         newDescription: result.object
       };
@@ -646,11 +668,13 @@ export async function getCharacterById(id: number): Promise<CharacterWithGamePus
   // 检查角色是否有currentPushId，如果没有说明是复活后的角色
   if (!character.currentPushId) {
     const factionData = await getFactionUiData(id);
+    const bondData = await getBondUiData(id);
     return {
       ...character,
       description: character.description as CharacterDescriptionType,
       currentPush: null,
-      factionData
+      factionData,
+      bondData
     }
   }
 
@@ -663,6 +687,7 @@ export async function getCharacterById(id: number): Promise<CharacterWithGamePus
   }
 
   const factionData = await getFactionUiData(id);
+  const bondData = await getBondUiData(id);
 
   return {
     ...character,
@@ -672,7 +697,8 @@ export async function getCharacterById(id: number): Promise<CharacterWithGamePus
       info: currentPush.info || {},
       status: currentPush.status || {}
     } as BaseGamePush,
-    factionData
+    factionData,
+    bondData
   }
 }
 

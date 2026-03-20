@@ -24,6 +24,9 @@ const useStartGame = () => {
         if (res.factionData) {
           setChar((previous) => previous ? { ...previous, factionData: res.factionData } : previous);
         }
+        if (res.bondData) {
+          setChar((previous) => previous ? { ...previous, bondData: res.bondData } : previous);
+        }
         setLoadingText([true, "story"]);
       }).catch(() => {
           showToast("模型调用失败，正在重试。请检查设置中的 API Key、Base URL 与模型名。", 2600)
