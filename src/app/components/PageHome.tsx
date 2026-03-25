@@ -141,27 +141,10 @@ export default function PageHome() {
     })
   }, [deleteConfirm.characterId, uuid, renderCharList, checkLoginAndExecute])
 
-  //   setDeleteConfirm({
-  //     show: true,
-  //     characterId: id,
-  //     characterName: name
-  //   });
-  // }, []);
-
   // 取消删除
   const cancelDelete = useCallback(() => {
     setDeleteConfirm({ show: false, characterId: 0, characterName: '' });
   }, []);
-
-  // // 添加切换删除状态的函数
-  // const toggleDeleteState = useCallback((id: number, e: React.MouseEvent) => {
-  //   e.stopPropagation()
-  //   setCharList(prev => prev.map(char => 
-  //     char.id === id 
-  //       ? { ...char, willDelete: !char.willDelete }
-  //       : { ...char, willDelete: false } // 关闭其他角色的删除状态
-  //   ))
-  // }, [])
 
   useEffect(() => {
     renderCharList()
@@ -270,7 +253,7 @@ export default function PageHome() {
                   <div className="absolute bottom-[14px] left-[16px] right-[16px] rounded-[16px] border border-[rgba(242,228,195,0.14)] bg-[rgba(17,12,8,0.2)] px-4 py-3 text-center text-[12px] leading-[1.5] text-[#F0D37C] shadow-[0_10px_24px_rgba(20,10,6,0.08)]">
                     已复活，可重新开始这段修行
                   </div>
-                ) : (
+                ) : charStatus ? (
                   <div className="absolute bottom-[14px] left-[16px] right-[16px] grid grid-cols-3 gap-[8px] text-[#F2E8D8]">
                     <div className="rounded-[14px] bg-[rgba(17,12,8,0.22)] px-[6px] py-[10px] text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                       <div className="text-[11px] leading-none text-[#E8DCC7]">突破率</div>
@@ -278,14 +261,14 @@ export default function PageHome() {
                     </div>
                     <div className="rounded-[14px] bg-[rgba(17,12,8,0.22)] px-[6px] py-[10px] text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                       <div className="text-[11px] leading-none text-[#E8DCC7]">修为</div>
-                      <div className="mt-[8px] break-keep text-[18px] leading-none text-[#D7C576]">{charStatus?.等级}</div>
+                      <div className="mt-[8px] break-keep text-[18px] leading-none text-[#D7C576]">{charStatus.等级}</div>
                     </div>
                     <div className="rounded-[14px] bg-[rgba(17,12,8,0.22)] px-[6px] py-[10px] text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                       <div className="text-[11px] leading-none text-[#E8DCC7]">道心</div>
-                      <div className="mt-[8px] text-[20px] leading-none text-[#D7C576]">{charStatus?.道心}<span className="text-[11px] text-[#E8DCC7]">/3</span></div>
+                      <div className="mt-[8px] text-[20px] leading-none text-[#D7C576]">{charStatus.道心}<span className="text-[11px] text-[#E8DCC7]">/3</span></div>
                     </div>
                   </div>
-                )}
+                ) : null}
               </div>
               <div className='flex h-[56px] w-full items-center justify-between gap-[10px] px-[10px]' style={{ background: config.bg1 }}>
                 <button
@@ -307,7 +290,7 @@ export default function PageHome() {
                     if (isRevived) {
                       // 复活后的角色，直接开始新游戏
                       checkLoginAndExecute(() => { track('web.index.char_card.continue_story.click', { character_id: char.id }); toCharPage(char.id, true) });
-                    } else if (!charStatus.是否死亡) {
+                    } else if (charStatus && !charStatus.是否死亡) {
                       // 正常角色，检查是否死亡
                       checkLoginAndExecute(() => { track('web.index.char_card.continue_story.click', { character_id: char.id }); toCharPage(char.id, true) });
                     }
@@ -345,12 +328,12 @@ export default function PageHome() {
               <div className="text-[#11111188] text-[14px] mt-[4px]">删除后无法恢复</div>
 
               <div className="flex gap-[12px] mt-auto mb-[24px]">
-                <div onClick={confirmDelete} className="w-[100px] h-[40px] bg-[#B92217] rounded-[4px] flex items-center justify-center">
-                  <div className="text-white text-[14px]">确认删除</div>
-                </div>
-                <div onClick={cancelDelete} className="w-[100px] h-[40px] bg-[#666] rounded-[4px] flex items-center justify-center">
-                  <div className="text-white text-[14px]">取消</div>
-                </div>
+                <button type="button" onClick={confirmDelete} className="w-[100px] h-[40px] bg-[#B92217] rounded-[4px] flex items-center justify-center cursor-pointer">
+                  <span className="text-white text-[14px]">确认删除</span>
+                </button>
+                <button type="button" onClick={cancelDelete} className="w-[100px] h-[40px] bg-[#666] rounded-[4px] flex items-center justify-center cursor-pointer">
+                  <span className="text-white text-[14px]">取消</span>
+                </button>
               </div>
             </div>
           </div>

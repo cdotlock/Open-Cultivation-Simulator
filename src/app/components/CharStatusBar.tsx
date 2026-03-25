@@ -25,9 +25,10 @@ export const CharStatusBar = ({ current, delta }: CharStatusBarProps) => {
 
   useEffect(() => {
     setShowDelta(true);
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       setShowDelta(false);
     }, 5000);
+    return () => clearTimeout(timer);
   }, [delta]);
 
   return (

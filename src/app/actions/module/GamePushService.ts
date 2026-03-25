@@ -14,7 +14,6 @@ import { extendMemory } from "@/utils/extendMemory";
 import MemoryRules from "@/config/MemoryRules";
 import eventBus from "@/utils/eventBus";
 import { PreloadService, OptionWithPreroll } from "./PreloadService";
-import { OptionService } from "./OptionService";
 import {
   getFactionNarrativeContext,
   maybeAdvanceFactionWorldTurn,
@@ -25,11 +24,9 @@ import { getBondNarrativeContext, maybeAdvanceBondWorld } from "./bondSystem";
 export class GamePushService {
     private static preloadTasks = new Map<string, Promise<GamePush[]>>();
     private preloadService: PreloadService;
-    private optionService: OptionService;
 
     constructor() {
         this.preloadService = new PreloadService();
-        this.optionService = new OptionService();
     }
 
     async createGamePush(

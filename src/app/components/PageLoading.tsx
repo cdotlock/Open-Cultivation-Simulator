@@ -150,7 +150,7 @@ export default function PageLoading() {
       {/* 添加进度显示 */}
       <div className="w-full h-[2px] bg-[#1111114C] fixed bottom-[78px] left-0" />
       <div className="h-[2px] bg-[#1111114C] fixed bottom-[78px] left-0" style={{ width: `${progress}%` }} />
-      <div className="fixed bottom-[60px] text-black text-[14px]" style={{ left: `${progress - 5}%` }}>
+      <div className="fixed bottom-[60px] text-black text-[14px]" style={{ left: `${Math.max(2, progress - 5)}%` }}>
         {progress}%
       </div>
     </div>

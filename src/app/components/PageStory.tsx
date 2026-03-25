@@ -270,26 +270,34 @@ const StatusLoading = ({ loadingAnimateState = true }: { loadingAnimateState?: b
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
 
   useEffect(() => {
-    if (loadingAnimateState) {
-      const currentText = loadingTexts[currentTextIndex];
-      let charIndex = 0;
-
-      // 打字机效果
-      const typing = setInterval(() => {
-        if (charIndex <= currentText.length) {
-          setDisplayText(currentText.slice(0, charIndex) + (charIndex === currentText.length ? "" : "▌"));
-          charIndex++;
-        } else {
-          clearInterval(typing);
-          // 切换到下一条文案
-          setTimeout(() => {
-            setCurrentTextIndex((prev) => (prev + 1) % loadingTexts.length);
-          }, 2000);
-        }
-      }, 100);
-
-      return () => clearInterval(typing);
+    if (!loadingAnimateState) {
+      return;
     }
+
+    const currentText = loadingTexts[currentTextIndex];
+    let charIndex = 0;
+    let switchTimer: ReturnType<typeof setTimeout> | null = null;
+
+    // 打字机效果
+    const typing = setInterval(() => {
+      if (charIndex <= currentText.length) {
+        setDisplayText(currentText.slice(0, charIndex) + (charIndex === currentText.length ? "" : "▌"));
+        charIndex++;
+      } else {
+        clearInterval(typing);
+        // 切换到下一条文案
+        switchTimer = setTimeout(() => {
+          setCurrentTextIndex((prev) => (prev + 1) % loadingTexts.length);
+        }, 2000);
+      }
+    }, 100);
+
+    return () => {
+      clearInterval(typing);
+      if (switchTimer) {
+        clearTimeout(switchTimer);
+      }
+    };
   }, [currentTextIndex, loadingAnimateState]);
 
   return (
@@ -333,7 +341,7 @@ const StatusPlaying = ({ story, onNext, setGameState, imageUrl, showImage }: { s
         total: totalDiceValue,
         success: !!option?.是否成功,
       })
-    } catch {}
+    } catch (error) { console.warn('分析事件跟踪失败:', error); }
   }, [setOption])
 
   // 检测是否有图片并进入预览状态
@@ -701,7 +709,7 @@ const PageStory= () => {
           setChar((previous) => previous ? { ...previous, factionData: result } : previous);
         }
       })
-      .catch(() => {});
+      .catch((error) => { console.warn('加载势力数据失败:', error); });
   }, [char?.factionData, char?.id, setChar]);
 
   useEffect(() => {
@@ -716,7 +724,7 @@ const PageStory= () => {
           setChar((previous) => previous ? { ...previous, bondData: result } : previous);
         }
       })
-      .catch(() => {});
+      .catch((error) => { console.warn('加载缘簿数据失败:', error); });
   }, [char?.bondData, char?.id, setChar]);
 
   return (

@@ -62,7 +62,7 @@ export default function PageChar() {
           setChar((previous) => previous ? { ...previous, factionData: result } : previous);
         }
       })
-      .catch(() => {});
+      .catch((error) => { console.warn('加载势力数据失败:', error); });
   }, [char?.factionData, char?.id, setChar]);
 
   useEffect(() => {
@@ -77,7 +77,7 @@ export default function PageChar() {
           setChar((previous) => previous ? { ...previous, bondData: result } : previous);
         }
       })
-      .catch(() => {});
+      .catch((error) => { console.warn('加载缘簿数据失败:', error); });
   }, [char?.bondData, char?.id, setChar]);
 
   if (!char) {
@@ -137,7 +137,7 @@ export default function PageChar() {
     routerTo("home");
     try {
       trackEvent(UmamiEvents.删除角色, { character_id: char.id })
-    } catch {}
+    } catch (error) { console.warn('分析事件跟踪失败:', error); }
   };
 
   return (
@@ -258,7 +258,7 @@ export default function PageChar() {
             try {
               track('web.char_profile.history_record.click');
               trackEvent(UmamiEvents.首页历史按钮, { character_id: char.id, from: 'char' })
-            } catch {}
+            } catch (error) { console.warn('分析事件跟踪失败:', error); }
             handleCharacterSelect(char.id);
             router.push("/pages/history");
           }}
@@ -277,6 +277,14 @@ export default function PageChar() {
         >
           势
         </button>
+        <button
+          type="button"
+          onClick={() => setDeleteConfirm(true)}
+          className="flex h-[40px] w-[40px] items-center justify-center rounded-[14px] bg-[rgba(24,17,11,0.26)] backdrop-blur-[2px] text-[12px] text-[#f7e8c4]"
+          aria-label="删除角色"
+        >
+          <img src={$img('icon-delete')} alt="删除" className="h-[18px] w-[18px] brightness-200" />
+        </button>
       </div>
 
       {/* Add delete confirm modal */}
@@ -292,12 +300,12 @@ export default function PageChar() {
               </div>
               <div className="text-[#11111188] text-[14px] mt-[4px]">删除后无法恢复</div>
               <div className="flex gap-[12px] mt-auto mb-[24px]">
-                <div onClick={handleDelete} className="w-[100px] h-[40px] bg-[#B92217] rounded-[4px] flex items-center justify-center">
-                  <div className="text-white text-[14px]">确认删除</div>
-                </div>
-                <div onClick={() => setDeleteConfirm(false)} className="w-[100px] h-[40px] bg-[#666] rounded-[4px] flex items-center justify-center">
-                  <div className="text-white text-[14px]">取消</div>
-                </div>
+                <button type="button" onClick={handleDelete} className="w-[100px] h-[40px] bg-[#B92217] rounded-[4px] flex items-center justify-center cursor-pointer">
+                  <span className="text-white text-[14px]">确认删除</span>
+                </button>
+                <button type="button" onClick={() => setDeleteConfirm(false)} className="w-[100px] h-[40px] bg-[#666] rounded-[4px] flex items-center justify-center cursor-pointer">
+                  <span className="text-white text-[14px]">取消</span>
+                </button>
               </div>
             </div>
           </div>

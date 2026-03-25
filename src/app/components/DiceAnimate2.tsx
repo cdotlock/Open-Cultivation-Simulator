@@ -39,11 +39,16 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
   }, [phase, baseDiceValue, totalDiceValue]);
 
   useEffect(() => {
+    let cancelled = false;
+    let rollInterval: ReturnType<typeof setInterval> | null = null;
+
     const animateSequence = async () => {
-      const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+      const sleep = (ms: number) => new Promise<void>(resolve => {
+        setTimeout(resolve, ms);
+      });
 
       // 1. 背景出现动画 - 透明度0-1，1s
-      if (containerRef.current) {
+      if (!cancelled && containerRef.current) {
         containerRef.current.animate([
           { opacity: 0 },
           { opacity: 1 }
@@ -54,7 +59,8 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
         });
       }
 
-      await sleep(500); // 背景动画结束后0.5s
+      await sleep(500);
+      if (cancelled) return;
 
       // 2. 顶部circle元素出现
       if (circleContainerRef.current) {
@@ -68,7 +74,8 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
         });
       }
 
-      await sleep(500); // circle动画结束后0.5s
+      await sleep(500);
+      if (cancelled) return;
 
       // 3. 骰子和检定信息出现
       if (diceContainerRef.current) {
@@ -95,20 +102,26 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
 
       // 开始骰子滚动动画
       setPhase('rolling');
-      const rollInterval = setInterval(() => {
+      rollInterval = setInterval(() => {
+        if (cancelled) return;
         setDice1(Math.floor(Math.random() * 6) + 1);
         setDice2(Math.floor(Math.random() * 6) + 1);
       }, 100);
 
-      await sleep(2000); // 骰子滚动2s
+      await sleep(2000);
+      if (cancelled) return;
 
       // 4. 停止滚动，显示最终结果
       setPhase('result');
       setDice1(option?.骰子?.[0] || 1);
       setDice2(option?.骰子?.[1] || 1);
-      clearInterval(rollInterval);
+      if (rollInterval) {
+        clearInterval(rollInterval);
+        rollInterval = null;
+      }
 
-      await sleep(1000); // 检定信息动画结束后2s
+      await sleep(1000);
+      if (cancelled) return;
 
       // 5. 变动原因出现
       if (reasonsContainerRef.current && option?.变动原因 && option.变动原因.length > 0) {
@@ -122,11 +135,11 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
         });
       }
 
-      await sleep(2000); // 变动原因动画结束后0.5s
+      await sleep(2000);
+      if (cancelled) return;
 
       // 6. 显示数值变化动画
       if (diceValueRef.current) {
-        // 更新为最终数值，同时放大并改变颜色
         diceValueRef.current.textContent = `${totalDiceValue}`;
 
         const animation = diceValueRef.current.animate([
@@ -141,23 +154,34 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
         ], {
           duration: 1200,
           easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-          fill: 'forwards'  // 保持最终状态
+          fill: 'forwards'
         });
 
-        // 等待动画完成
         await new Promise<void>(resolve => {
           animation.onfinish = () => {
-            setPhase('success');
+            if (!cancelled) {
+              setPhase('success');
+            }
             resolve();
           };
         });
 
-        await sleep(500); // 动画完成后间隔0.5s
+        if (cancelled) return;
+
+        await sleep(500);
+        if (cancelled) return;
         props.timeout();
       }
     };
 
     animateSequence();
+
+    return () => {
+      cancelled = true;
+      if (rollInterval) {
+        clearInterval(rollInterval);
+      }
+    };
   }, [option, props, baseDiceValue, totalDiceValue]);
 
   return (

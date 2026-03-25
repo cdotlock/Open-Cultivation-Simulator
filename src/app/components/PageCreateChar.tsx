@@ -86,7 +86,7 @@ export default function PageCreateChar() {
     try {
       track('web.create_character.choose_attribute.click');
       trackEvent(UmamiEvents.快速生成角色, { source: 'create_page_spirit_root', spirit_root: spiritRoots[index].name })
-    } catch {}
+    } catch (error) { console.warn('分析事件跟踪失败:', error); }
   }, [attributePoints, calculateAdjustedAttributes, showToast])
 
 
@@ -142,21 +142,21 @@ export default function PageCreateChar() {
   const handleRandomFirstName = useCallback(() => {
     try {
       track('web.create_character.random.click', { random_type: 'surname' });
-    } catch {}
+    } catch (error) { console.warn('分析事件跟踪失败:', error); }
     updateFormValue(0, ramdomFirstName());
   }, [updateFormValue])
 
   const handleRandomLastName = useCallback(() => {
     try {
       track('web.create_character.random.click', { random_type: 'name' });
-    } catch {}
+    } catch (error) { console.warn('分析事件跟踪失败:', error); }
     updateFormValue(1, ramdomLastName());
   }, [updateFormValue])
 
   const handleRandomIdentity = useCallback(() => {
     try {
       track('web.create_character.random.click', { random_type: 'identity' });
-    } catch {}
+    } catch (error) { console.warn('分析事件跟踪失败:', error); }
     updateFormValue(2, ramdomIdentity());
   }, [updateFormValue])
 
@@ -179,7 +179,7 @@ export default function PageCreateChar() {
           sense: totalAttributes.神识,
           agility: totalAttributes.身手,
         })
-      } catch {}
+      } catch (error) { console.warn('分析事件跟踪失败:', error); }
     }
   }, [canCreate, toCreateLoadingPage, createForm, selectedSpiritRoot, totalAttributes])
 
