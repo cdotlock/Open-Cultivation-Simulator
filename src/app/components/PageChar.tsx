@@ -249,7 +249,7 @@ export default function PageChar() {
         </div>
       </div>
 
-      <div className="absolute left-3 top-4 z-50 flex w-[40px] flex-col gap-[10px]">
+      <div className="fixed right-3 top-4 z-50 flex w-[40px] flex-col gap-[10px]">
         <button
           type="button"
           className="flex h-[40px] w-[40px] items-center justify-center rounded-[14px] bg-[rgba(24,17,11,0.26)] backdrop-blur-[2px]"
@@ -284,6 +284,16 @@ export default function PageChar() {
           aria-label="删除角色"
         >
           <img src={$img('icon-delete')} alt="删除" className="h-[18px] w-[18px] brightness-200" />
+        </button>
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="flex h-[40px] w-[40px] items-center justify-center rounded-[14px] bg-[rgba(24,17,11,0.26)] backdrop-blur-[2px]"
+          aria-label="返回"
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M11 4L6 9L11 14" stroke="#f7e8c4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </button>
       </div>
 
