@@ -287,7 +287,7 @@ export default function PageChar() {
         </button>
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => routerTo("home")}
           className="flex h-[40px] w-[40px] items-center justify-center rounded-[14px] bg-[rgba(24,17,11,0.26)] backdrop-blur-[2px]"
           aria-label="返回"
         >
