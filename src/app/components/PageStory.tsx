@@ -63,7 +63,7 @@ const buildStoryHtml = (story: string) => {
     .split(/\n{2,}/)
     .map((paragraph) => paragraph.trim())
     .filter(Boolean)
-    .map((paragraph) => `<p>${paragraph.replace(/\n/g, '<br />')}</p>`)
+    .map((paragraph) => `<p style="text-indent:2em">${paragraph.replace(/\n/g, '<br />')}</p>`)
     .join("");
 };
 
@@ -256,10 +256,18 @@ const StatusStreaming = ({ complete }: { complete: (story: string) => void }) =>
     };
   }, [complete, gamePush, storyText]);
 
+  const paragraphs = displayText.split(/\n{2,}/).filter(Boolean);
+
   return (
     <div className={storyProseClass}>
-      {displayText}
-      {isTyping && <span className="animate-pulse">▌</span>}
+      {paragraphs.length > 0 ? paragraphs.map((para, i) => (
+        <p key={i} style={{ textIndent: "2em" }}>
+          {para.split("\n").map((line, j) => j === 0 ? line : <><br key={j} />{line}</>)}
+          {isTyping && i === paragraphs.length - 1 && <span className="animate-pulse">▌</span>}
+        </p>
+      )) : (
+        isTyping && <span className="animate-pulse">▌</span>
+      )}
     </div>
   );
 }
