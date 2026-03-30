@@ -761,6 +761,17 @@ const PageStory= () => {
           />
         </div>
       ) : null}
+      <button
+        type="button"
+        onClick={() => routerTo("home")}
+        className="fixed right-3 top-4 z-50 flex h-[40px] w-[40px] items-center justify-center rounded-[14px] bg-[rgba(24,17,11,0.26)] backdrop-blur-[2px]"
+        aria-label="返回主页"
+      >
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M11 4L6 9L11 14" stroke="#f7e8c4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
       <div className="fixed bottom-3 z-20 right-0 w-[90px] h-[50px]">
         <img className="w-full mt-auto" src={$img('newStory/bgm-b')} alt="" />
         {isPlaying ? 
