@@ -1,6 +1,6 @@
 import { useRecoilState } from "recoil";
 import { characterState, gamePushState } from "../store";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDebounceCallback } from "usehooks-ts";
 import { $img } from "@/utils";
 import { GameOptionType, BreakthroughResponse, FormattedCharacterStatus } from "@/interfaces";
@@ -262,7 +262,7 @@ const StatusStreaming = ({ complete }: { complete: (story: string) => void }) =>
     <div className={storyProseClass}>
       {paragraphs.length > 0 ? paragraphs.map((para, i) => (
         <p key={i} style={{ textIndent: "2em" }}>
-          {para.split("\n").map((line, j) => j === 0 ? line : <><br key={j} />{line}</>)}
+          {para.split("\n").map((line, j) => j === 0 ? line : <Fragment key={j}><br />{line}</Fragment>)}
           {isTyping && i === paragraphs.length - 1 && <span className="animate-pulse">▌</span>}
         </p>
       )) : (
