@@ -276,8 +276,10 @@ export default function PageHome() {
                   onClick={() => checkLoginAndExecute(() => {
                     track('web.index.char_card.history_record.click', { character_id: char.id })
                     trackEvent(UmamiEvents.首页历史按钮, { character_id: char.id })
-                    handleCharacterSelect(char.id);
-                    router.push("/pages/history")
+                    getCharacterById(char.id).then(res => {
+                      setChar(res);
+                      router.push("/pages/history");
+                    });
                   })}
                   className="flex min-h-[42px] w-[46%] max-w-[148px] items-center justify-center"
                   aria-label={`查看 ${charInfo.角色名称} 的历史记录`}
