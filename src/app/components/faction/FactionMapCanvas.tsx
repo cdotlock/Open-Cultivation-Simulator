@@ -429,7 +429,7 @@ export function FactionMapCanvas({
         <div className="absolute inset-0 opacity-[0.08]" style={{ background: `url(${$img("mask-repect")}) center/38% repeat` }} />
         <div
           ref={containerRef}
-          className={`relative overflow-hidden rounded-[28px] ${isPreview ? "h-[220px] sm:h-[250px]" : "h-[470px] lg:h-[500px]"}`}
+          className={`relative overflow-hidden rounded-[28px] ${isPreview ? "h-[220px] sm:h-[250px]" : "h-[300px] lg:h-[320px]"}`}
         >
           <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
 
