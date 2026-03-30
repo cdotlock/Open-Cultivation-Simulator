@@ -203,7 +203,7 @@ export default function WorldPage() {
 
       {expandedMap ? (
         <div className="fixed inset-0 z-50 bg-[rgba(17,12,8,0.56)] backdrop-blur-[6px]">
-          <div className="flex h-full items-center justify-center p-3 lg:p-6">
+          <div className="flex h-full items-start justify-center overflow-y-auto p-3 lg:p-6">
             <div className="w-full max-w-[1440px] overflow-hidden rounded-[32px] border border-[rgba(152,119,72,0.24)] bg-[rgba(246,238,219,0.96)] shadow-[0_36px_90px_rgba(24,16,10,0.34)]">
               <div className="flex items-center justify-between gap-3 border-b border-[rgba(145,110,63,0.14)] px-4 py-3">
                 <div>
