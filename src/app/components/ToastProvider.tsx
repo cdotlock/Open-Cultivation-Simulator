@@ -12,15 +12,32 @@ const ToastProvider: FC<{ children: React.ReactNode }> = (props) => {
   const { shareCharacterInfo, copyLink, shortUrl, closeShare } = useCharacterCrud()
   const copy = useCopyToClipboard()[1]
 
+  const safeCopy = useCallback((text: string) => {
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).catch(() => {
+        const el = document.createElement('textarea');
+        el.value = text;
+        el.style.position = 'fixed';
+        el.style.opacity = '0';
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      });
+    } else {
+      copy(text);
+    }
+  }, [copy])
+
   const handleCopyLink = useCallback(() => {
-    copy(copyLink)
+    safeCopy(copyLink)
     showToast('链接已复制到剪贴板')
-  }, [copy, showToast, copyLink])
+  }, [safeCopy, showToast, copyLink])
 
   const handleCopyId = useCallback(() => {
-    copy(`${shortUrl}`)
+    safeCopy(`${shortUrl}`)
     showToast('密钥已复制到剪贴板')
-  }, [copy, showToast, shortUrl])
+  }, [safeCopy, showToast, shortUrl])
 
   const eventStopPropagation = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation()

@@ -592,6 +592,7 @@ const PageStory= () => {
   const [expendedStory, setExpendedStory] = useState<string>("");
   const [imageState, setImageState] = useState<imageGenerationState>({ showImage: false });
   const router = useRouter();
+  const { routerTo } = useRoute();
 
   // 监听 gamePush 和游戏状态的变化，在故事流式输出结束后再展示图片
   useEffect(() => {
