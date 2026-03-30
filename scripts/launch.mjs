@@ -5,6 +5,7 @@ import { spawn, spawnSync } from "child_process";
 import path from "path";
 import process from "process";
 import { fileURLToPath } from "url";
+import os from "os";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(scriptDir, "..");
@@ -90,6 +91,19 @@ function ensurePnpm() {
   runStep("corepack", ["prepare", `pnpm@${pnpmVersion}`, "--activate"]);
 }
 
+function getLocalIPv4() {
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    const addrs = nets[name] ?? [];
+    for (const addr of addrs) {
+      if (addr && addr.family === "IPv4" && !addr.internal) {
+        return addr.address;
+      }
+    }
+  }
+  return "0.0.0.0";
+}
+
 async function main() {
   if (args.includes("--help") || args.includes("-h")) {
     process.stdout.write("Usage: node scripts/launch.mjs [dev|prod]\n");
@@ -105,11 +119,15 @@ async function main() {
 
   if (mode === "prod") {
     runStep("pnpm", ["build"]);
-    await runLong("pnpm", ["start"]);
+    const host = getLocalIPv4();
+    log(`以生产模式启动，主机地址: ${host}:3009`);
+    await runLong("pnpm", ["exec", "next", "start", "--port", "3009", "--hostname", host]);
     return;
   }
 
-  await runLong("pnpm", ["dev"]);
+  const host = getLocalIPv4();
+  log(`以开发模式启动，主机地址: ${host}:3009`);
+  await runLong("pnpm", ["exec", "next", "dev", "--port", "3009", "--hostname", host]);
 }
 
 main().catch((error) => {

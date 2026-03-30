@@ -6,6 +6,7 @@ import { useLogin } from '../hooks/useLogin';
 import useGameControll from '@/app/hooks/useGameControll';
 import { CharacterCreationSection } from './CharacterCreationSection';
 import { $img } from '@/utils';
+import useRoute from '@/app/hooks/useRoute';
 
 const MAX_ATTRIBUTE_POINTS = 5
 
@@ -24,6 +25,7 @@ export default function PageCreateChar() {
   const { user, checkLogin } = useLogin()
   const uuid = user?.uuid || ""
   const { toCreateLoadingPage } = useGameControll(uuid)
+  const { routerBack } = useRoute()
 
   // 灵根选择
   const [selectedSpiritRoot, setSelectedSpiritRoot] = useState<number | null>(null)
@@ -195,10 +197,17 @@ export default function PageCreateChar() {
 
   return (
     <div className="w-full px-4 pb-[134px] pt-5 text-[14px] text-[#111]">
+      <button
+        type="button"
+        onClick={routerBack}
+        className="mb-4 flex items-center gap-1 rounded-full border border-[#8e6a38] px-3 py-2 text-[11px] text-[#5e4523]"
+      >
+        ← 返回
+      </button>
       <div className="mx-auto flex max-w-md flex-col gap-4">
         <section className="rounded-[30px] border border-[#d6be92] bg-[linear-gradient(180deg,rgba(255,249,239,0.95),rgba(247,238,222,0.92))] px-5 py-5 shadow-[0_18px_36px_rgba(66,43,16,0.08)]">
           <div className="text-center text-[13px] tracking-[0.22em] text-[#8c734a]">{`{ 创建角色 }`}</div>
-          <div className="mt-2 text-center font-family-song text-[34px] leading-[1.08] text-[#2f2212]">{`"在下名为"`}</div>
+          <div className="mt-2 text-center font-family-song text-[26px] leading-[1.08] text-[#2f2212]">{`"在下名为"`}</div>
           <div className="mt-3 text-center text-[12px] leading-[1.7] text-[#6d5a39]">
             定下名讳、身份与灵根，便可踏上你的修行之路。
           </div>
@@ -216,7 +225,7 @@ export default function PageCreateChar() {
                 </button>
               </div>
               <input
-                className="w-full bg-transparent text-center font-family-song text-[34px] leading-none focus-visible:outline-none"
+                className="w-full bg-transparent text-center font-family-song text-[28px] leading-none focus-visible:outline-none"
                 maxLength={2}
                 value={createForm[0]}
                 onChange={(e) => handleUserInput(e, 0)}
@@ -236,7 +245,7 @@ export default function PageCreateChar() {
                 </button>
               </div>
               <input
-                className="w-full bg-transparent text-center font-family-song text-[34px] leading-none focus-visible:outline-none"
+                className="w-full bg-transparent text-center font-family-song text-[28px] leading-none focus-visible:outline-none"
                 maxLength={2}
                 value={createForm[1]}
                 onChange={(e) => handleUserInput(e, 1)}
