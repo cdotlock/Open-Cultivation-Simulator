@@ -104,7 +104,9 @@ export default function SettingsPage() {
                 提示词
               </button>
               <button
-                onClick={() => router.push("/")}
+                onClick={() => {
+                  window.location.href = "/";
+                }}
                 className="whitespace-nowrap rounded-full border border-[#8e6a38] px-3 py-2 text-[11px] text-[#5f4525] hover:bg-[#f6ead3] md:text-[12px]"
               >
                 返回
@@ -183,19 +185,24 @@ export default function SettingsPage() {
                 </label>
               </div>
 
-              <div className="mt-6 flex flex-wrap gap-3">
-                <button
-                  onClick={handleSaveSettings}
-                  className="whitespace-nowrap rounded-full bg-[#4f3b1d] px-4 py-3 text-[12px] text-[#f8ecd3] md:px-5 md:text-sm"
-                >
-                  保存设置
-                </button>
-                <button
-                  onClick={handleTestConnection}
-                  className="whitespace-nowrap rounded-full border border-[#7c5d32] px-4 py-3 text-[12px] text-[#5c4422] md:px-5 md:text-sm"
-                >
-                  测试连接
-                </button>
+              <div className="mt-6 flex flex-col gap-3">
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={handleSaveSettings}
+                    className="whitespace-nowrap rounded-full bg-[#4f3b1d] px-4 py-3 text-[12px] text-[#f8ecd3] md:px-5 md:text-sm"
+                  >
+                    保存设置
+                  </button>
+                  <button
+                    onClick={handleTestConnection}
+                    className="whitespace-nowrap rounded-full border border-[#7c5d32] px-4 py-3 text-[12px] text-[#5c4422] md:px-5 md:text-sm"
+                  >
+                    测试连接
+                  </button>
+                </div>
+                <div className="min-h-[20px] text-sm text-[#8d734d]">
+                  {isPending ? "正在落盘本地设置..." : notice || "设置保存在本机，立即生效。"}
+                </div>
               </div>
             </section>
 
@@ -219,10 +226,6 @@ export default function SettingsPage() {
                 </div>
               </div>
             </section>
-          </div>
-
-          <div className="min-h-[52px] border-t border-[#c9ae7f] px-5 py-4 text-sm text-[#6d5838]">
-            {isPending ? "正在落盘本地设置..." : notice || "设置保存在本机，立即生效。"}
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { $img } from '@/utils'
 import { useCallback, useEffect, useState } from 'react';
 import { deleteCharacter, getCharacterById } from '@/app/actions/character/action'
+import { checkApiConfigured } from '@/app/actions/settings/action'
 import { useUuid, useLogin } from '../hooks/useLogin';
 import { CharacterDescriptionType, CharacterStatusType } from "@/interfaces/schemas"
 import charConfig from './const/char';
@@ -40,6 +41,7 @@ export default function PageHome() {
     characterId: 0,
     characterName: ''
   });
+  const [showApiConfigPrompt, setShowApiConfigPrompt] = useState(false);
 
   const getCharacterList = useCallback(async () => {
     const res = await getCharacterListByUuid()
@@ -150,6 +152,23 @@ export default function PageHome() {
     renderCharList()
   }, [renderCharList, isLoggedIn])
 
+  const handleCreateClick = useCallback(() => {
+    checkLoginAndExecute(async () => {
+      try {
+        const isConfigured = await checkApiConfigured();
+        if (!isConfigured) {
+          setShowApiConfigPrompt(true);
+          return;
+        }
+        track('web.index.create_character.click');
+        trackEvent(UmamiEvents.快速生成角色, { source: 'create_button' });
+        routerTo("create");
+      } catch (error) {
+        console.error("API 配置检查失败", error);
+        setShowApiConfigPrompt(true);
+      }
+    });
+  }, [checkLoginAndExecute, routerTo]);
 
   return (
     <div className="flex flex-col items-center px-[18px] pb-[90px] pt-[18px] font-family-song">
@@ -169,11 +188,7 @@ export default function PageHome() {
 
       <button
         type="button"
-        onClick={() => checkLoginAndExecute(() => {
-          track('web.index.create_character.click')
-          trackEvent(UmamiEvents.快速生成角色, { source: 'create_button' })
-          routerTo("create")
-        })}
+        onClick={handleCreateClick}
         className="mt-[22px] flex w-full max-w-[360px] justify-center px-[8px] transition-transform active:translate-y-[1px]"
         aria-label="创建角色"
       >
@@ -340,6 +355,32 @@ export default function PageHome() {
             </div>
           </div>
           <img onClick={cancelDelete} className="relative w-[32px] h-[32px] mt-[16px]" src={$img('icon-cancel')} alt="icon-cancel" />
+        </div>
+      )}
+
+      {/* API 配置提示弹窗 */}
+      {showApiConfigPrompt && (
+        <div className="fixed inset-0 z-30 flex flex-col items-center justify-center">
+          <div onClick={() => setShowApiConfigPrompt(false)} className="absolute inset-0 bg-[#000000B2] backdrop-blur-[5px]"></div>
+          <div onClick={eventStopPropagation} className="relative w-[311px] h-[280px] leading-[1]">
+            <img className="w-full h-full" src={$img('bg-invite')} alt="bg-invite" />
+            <div className="absolute inset-0 flex flex-col items-center justify-start pt-[60px]">
+              <div className="text-[#111] text-[24px]">未配置大模型 API</div>
+              <div className="text-[#11111188] text-[14px] mt-[16px] text-center px-[20px] leading-relaxed">
+                修仙之路需要天地灵气（API 支持）。<br/>请先前往洞府设置完成模型配置，<br/>方可开始创建角色。
+              </div>
+
+              <div className="flex gap-[12px] mt-auto mb-[24px]">
+                <button type="button" onClick={() => router.push("/pages/settings")} className="w-[120px] h-[40px] bg-[#8B6E43] rounded-[4px] flex items-center justify-center cursor-pointer">
+                  <span className="text-white text-[14px]">前往设置</span>
+                </button>
+                <button type="button" onClick={() => setShowApiConfigPrompt(false)} className="w-[100px] h-[40px] bg-[#666] rounded-[4px] flex items-center justify-center cursor-pointer">
+                  <span className="text-white text-[14px]">暂不配置</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <img onClick={() => setShowApiConfigPrompt(false)} className="relative w-[32px] h-[32px] mt-[16px] cursor-pointer" src={$img('icon-cancel')} alt="icon-cancel" />
         </div>
       )}
     </div>

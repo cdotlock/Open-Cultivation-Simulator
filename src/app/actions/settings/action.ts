@@ -38,6 +38,12 @@ export async function getSettingsSnapshot() {
   };
 }
 
+export async function checkApiConfigured() {
+  const config = await getLocalAppConfig();
+  const activeModel = config.models.find((model) => model.isActive) || config.models[0];
+  return Boolean(activeModel?.apiKey && activeModel.apiKey.trim().length > 0);
+}
+
 export async function saveSettings(input: z.infer<typeof settingsSchema>) {
   const parsed = settingsSchema.parse(input);
 
