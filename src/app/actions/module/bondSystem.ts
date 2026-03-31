@@ -1435,6 +1435,7 @@ function chooseEventSelectionFromTree(
   bond: CharacterBondView,
   flavor: BondFlavorProfile,
   seed: number,
+  recentlyUsedKeys: Set<string>,
   branchPath: string[] = [],
 ): EventSelection | undefined {
   const children = (node.children ?? []).filter((item) => nodeMatchesFlavor(item, bond, flavor));
@@ -1446,12 +1447,16 @@ function chooseEventSelectionFromTree(
         bond,
         flavor,
         buildStableSeed(seed, child.key, bond.progressStage, bond.mood),
+        recentlyUsedKeys,
         [...branchPath, child.label],
       );
     }
   }
 
-  const blueprints = (node.blueprints ?? []).filter((item) => nodeMatchesFlavor(item, bond, flavor));
+  // 优先选未近期使用过的蓝图，避免重复
+  const allBlueprints = (node.blueprints ?? []).filter((item) => nodeMatchesFlavor(item, bond, flavor));
+  const freshBlueprints = allBlueprints.filter((item) => !recentlyUsedKeys.has(item.key));
+  const blueprints = freshBlueprints.length > 0 ? freshBlueprints : allBlueprints;
   const blueprint = pickSeededWeighted(blueprints, seed, (item) => scoreEventNode(item, bond, flavor));
   if (!blueprints.length || !blueprint) {
     return undefined;
@@ -1477,8 +1482,20 @@ function chooseEventSelection(bond: CharacterBondView, turn: number): EventSelec
     flavor.jokeTolerance,
     flavor.desiredScenes.join("|"),
   );
+
+  // 收集最近4次事件用过的蓝图key，避免选重
+  const recentlyUsedKeys = new Set<string>(
+    bond.memories
+      .filter((m) => {
+        const p = m.payload && typeof m.payload === "object" ? m.payload as Record<string, unknown> : {};
+        return m.sourceType === "EVENT" && typeof p.eventType === "string";
+      })
+      .slice(-4)
+      .map((m) => (m.payload as Record<string, unknown>).eventType as string),
+  );
+
   return (
-    chooseEventSelectionFromTree(root, bond, flavor, seed, [root.label]) || {
+    chooseEventSelectionFromTree(root, bond, flavor, seed, recentlyUsedKeys, [root.label]) || {
       blueprint: pickFallbackFlatBlueprint(bond, turn),
       branchPath: [root.label, "平铺回退"],
     }
@@ -2663,12 +2680,27 @@ function buildFallbackChatResult(message: string, bond: CharacterBondView): Bond
 }
 
 export async function sendBondChatMessage(characterId: number, bondId: number, message: string) {
-  const payload = await getBondUiData(characterId);
-  const bond = payload?.activeDaoLyu?.id === bondId
+  let payload = await getBondUiData(characterId);
+  let bond = payload?.activeDaoLyu?.id === bondId
     ? payload.activeDaoLyu
     : payload?.activeDisciples.find((item) => item.id === bondId);
+
+  // payload 可能是旧缓存或首次刷新后状态未稳定，直接查 DB 确认后再重取一次
   if (!bond) {
-    throw new Error("当前只能与已建立关系的对象对话");
+    const dbBond = await prisma.characterBond.findFirst({
+      where: { id: bondId, characterId, stage: STAGE_ACTIVE },
+      select: { id: true },
+    });
+    if (!dbBond) {
+      throw new Error("当前只能与已建立关系的对象对话");
+    }
+    payload = await getBondUiData(characterId);
+    bond = payload?.activeDaoLyu?.id === bondId
+      ? payload.activeDaoLyu
+      : payload?.activeDisciples.find((item) => item.id === bondId);
+    if (!bond) {
+      throw new Error("当前只能与已建立关系的对象对话");
+    }
   }
   if (!compactText(message)) {
     throw new Error("说点什么再开口");
