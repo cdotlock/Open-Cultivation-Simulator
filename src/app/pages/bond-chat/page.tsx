@@ -80,7 +80,8 @@ export default function BondChatPage() {
     }
 
     setLoading(true);
-    fetch(`/api/bond-snapshot?characterId=${characterId}`)
+    // 传入 bondId 让 API 在找不到时自动重试一次
+    fetch(`/api/bond-snapshot?characterId=${characterId}&bondId=${bondId}`)
       .then((response) => response.json())
       .then((result) => setPayload(result || undefined))
       .finally(() => setLoading(false));
@@ -91,10 +92,27 @@ export default function BondChatPage() {
     : payload?.activeDisciples.find((item) => item.id === bondId);
   const messages = buildMessages(payload, bondId);
 
-  if (loading || !payload || !characterId || !bondId || !bond) {
+  // 加载中
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F2EBD9] text-[#5f4525]">
         私语尚未接通...
+      </div>
+    );
+  }
+
+  // 加载完成但 bond 仍找不到，说明关系尚未建立或数据异常
+  if (!bond) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#F2EBD9] text-[#5f4525]">
+        <div className="text-[15px]">此段因果尚未落定，暂时无法私语。</div>
+        <button
+          type="button"
+          onClick={() => router.push(`/pages/bonds?characterId=${characterId}`)}
+          className="rounded-full border border-[rgba(137,103,54,0.22)] bg-[rgba(63,43,23,0.92)] px-5 py-2 text-[12px] tracking-[0.14em] text-[#f2dfbc]"
+        >
+          返回缘簿
+        </button>
       </div>
     );
   }
