@@ -2178,6 +2178,18 @@ async function fulfillDaoLyuWish(
     structuredWish: Prisma.JsonValue | null;
   },
 ) {
+  // 防止并发竞争导致重复创建：若已存在 ACTIVE 道侣则直接将愿望标为已完成
+  const existing = await db.characterBond.findFirst({
+    where: { characterId, bondType: DAO_LU, stage: STAGE_ACTIVE },
+  });
+  if (existing) {
+    await db.bondWish.update({
+      where: { id: wish.id },
+      data: { status: WISH_FULFILLED, fulfilledBondId: existing.id },
+    });
+    return;
+  }
+
   const parsedWish = wish.structuredWish && typeof wish.structuredWish === "object"
     ? bondWishStructSchema.safeParse(wish.structuredWish).data
     : undefined;
