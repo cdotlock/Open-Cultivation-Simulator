@@ -8,36 +8,34 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
   const option = props.option;
   const [phase, setPhase] = useState<'entering' | 'rolling' | 'result' | 'success'>('entering');
   const [showClose, setShowClose] = useState(false);
-  const [showReasons, setShowReasons] = useState(false);
   const [dice1, setDice1] = useState(1);
   const [dice2, setDice2] = useState(1);
 
   // 计算基础骰子值
   const baseDiceValue = (option?.骰子?.[0] || 0) + (option?.骰子?.[1] || 0);
-
   const appliedModifier = option?.修正值 || 0;
-
   // 计算最终总值（基础值 + 总修正）
   const totalDiceValue = baseDiceValue + appliedModifier;
-
-  // 检定目标DC
-  const dcValue = difficultyLevelMap.get(option?.选项难度 || "轻而易举") ?? 4;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const circleContainerRef = useRef<HTMLDivElement>(null);
   const diceContainerRef = useRef<HTMLDivElement>(null);
   const checkInfoRef = useRef<HTMLDivElement>(null);
   const reasonsContainerRef = useRef<HTMLDivElement>(null);
-  const diceValueRef = useRef<HTMLSpanElement>(null);
+  const diceValueRef = useRef<HTMLDivElement>(null);
 
-  // 仅在摇骰阶段显示"？"
+  // 根据阶段更新数值显示
   useEffect(() => {
     if (diceValueRef.current) {
       if (phase === 'entering' || phase === 'rolling') {
         diceValueRef.current.textContent = "？";
+      } else if (phase === 'result') {
+        diceValueRef.current.textContent = `${baseDiceValue}`;
+      } else if (phase === 'success') {
+        diceValueRef.current.textContent = `${totalDiceValue}`;
       }
     }
-  }, [phase]);
+  }, [phase, baseDiceValue, totalDiceValue]);
 
   useEffect(() => {
     let cancelled = false;
@@ -112,7 +110,7 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
       await sleep(2000);
       if (cancelled) return;
 
-      // 4. 停止滚动，先显示骰子原始点数（不含修正）
+      // 4. 停止滚动，显示最终结果
       setPhase('result');
       setDice1(option?.骰子?.[0] || 1);
       setDice2(option?.骰子?.[1] || 1);
@@ -121,42 +119,31 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
         rollInterval = null;
       }
 
-      // 先展示原始骰子值，让玩家看清楚投了多少
-      if (diceValueRef.current) {
-        diceValueRef.current.textContent = `${baseDiceValue}`;
-      }
-
-      await sleep(900);
+      await sleep(1000);
       if (cancelled) return;
 
-      // 5. 修正值原因浮现（如果有修正）
-      if (option?.变动原因 && option.变动原因.length > 0) {
-        setShowReasons(true);
-        await sleep(50); // 等一帧让 React 渲染容器
-        if (cancelled) return;
-        if (reasonsContainerRef.current) {
-          reasonsContainerRef.current.animate([
-            { opacity: 0 },
-            { opacity: 1 }
-          ], {
-            duration: 800,
-            easing: 'ease-out',
-            fill: 'forwards'
-          });
-        }
-        await sleep(1000);
-        if (cancelled) return;
+      // 5. 变动原因出现
+      if (reasonsContainerRef.current && option?.变动原因 && option.变动原因.length > 0) {
+        reasonsContainerRef.current.animate([
+          { opacity: 0 },
+          { opacity: 1 }
+        ], {
+          duration: 1000,
+          easing: 'ease-out',
+          fill: 'forwards'
+        });
       }
 
-      // 6. 过渡到最终总值（含修正）并变色
+      await sleep(2000);
+      if (cancelled) return;
+
+      // 6. 显示数值变化动画
       if (diceValueRef.current) {
-        // 如果有修正值，先把数字更新为最终值再做颜色动画
-        if (appliedModifier !== 0) {
-          diceValueRef.current.textContent = `${totalDiceValue}`;
-        }
+        diceValueRef.current.textContent = `${totalDiceValue}`;
+
         const animation = diceValueRef.current.animate([
           {
-            transform: 'scale(1.4)',
+            transform: 'scale(1.5)',
             color: option?.是否成功 ? '#10B981' : '#EF4444'
           },
           {
@@ -170,15 +157,22 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
         });
 
         await new Promise<void>(resolve => {
-          animation.onfinish = () => resolve();
+          animation.onfinish = () => {
+            if (!cancelled) {
+              setPhase('success');
+            }
+            resolve();
+          };
         });
+
+        if (cancelled) return;
+
+        await sleep(500);
+        if (cancelled) return;
+
+        // 原来是 props.timeout() 自动关闭，现改为显示手动关闭按钮
+        setShowClose(true);
       }
-
-      if (cancelled) return;
-
-      // 7. 进入success阶段，显示关闭按钮
-      setPhase('success');
-      setShowClose(true);
     };
 
     animateSequence();
@@ -189,7 +183,7 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
         clearInterval(rollInterval);
       }
     };
-  // 只依赖 option 本身，避免 props/派生值变化重触发动画
+  // 只依赖 option 本身，避免父组件重渲染重复触发动画
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [option]);
 
@@ -229,21 +223,20 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
             <div className="text-[15px] mt-2">
               {option?.选项类别}检定
             </div>
-            <div className="text-[24px] mt-1">
-              2D6 = <span ref={diceValueRef}>？</span>
+            <div className="text-[24px]">
+              2D6 = <div ref={diceValueRef} className="inline">？</div>
             </div>
           </div>
 
           {/* 分割线 */}
-          <div className="w-[calc(100vw-96px)] h-px mb-4" 
+          <div className="w-[calc(100vw-96px)] h-px mb-4"
             style={{ background: `url(${$img('newDice/line')}) center / cover no-repeat` }} />
 
-          {/* 变动原因/加成列表 - 两列布局，变色后才显示 */}
-          {showReasons && option?.变动原因 && option.变动原因.length > 0 && (
+          {/* 变动原因/加成列表 - 两列布局 */}
+          {(phase === 'result' || phase === 'success') && option?.变动原因 && option.变动原因.length > 0 && (
             <div ref={reasonsContainerRef} className="w-full px-4 opacity-0">
               <div className="grid grid-cols-2 gap-4">
                 {option.变动原因.map((reason, index) => {
-                  // 解析变动原因格式，支持多种格式
                   let name = reason;
                   let value = "";
 
@@ -252,7 +245,6 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
                     name = parts[0];
                     value = `+${parts[1]}`;
                   } else if (reason.includes('加成')) {
-                    // 处理"XX加成+数字"格式
                     const match = reason.match(/(.+?)(\+\d+)$/);
                     if (match) {
                       name = match[1];
