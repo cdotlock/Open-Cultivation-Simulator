@@ -229,9 +229,6 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
             <div className="text-[15px] mt-2">
               {option?.选项类别}检定
             </div>
-            <div className="text-[13px] text-[#F3E0BB99] mt-1">
-              检定目标&nbsp;<span className="text-[#F3E0BB] font-bold">{dcValue}</span>
-            </div>
             <div className="text-[24px] mt-1">
               2D6 = <span ref={diceValueRef}>？</span>
             </div>
