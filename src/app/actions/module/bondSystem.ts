@@ -116,7 +116,6 @@ const DAO_LU_VIBES = [
 const DAO_LYU_BASE_TRAIT_POOL = [
   "记仇但护短",
   "嘴上刻薄手上细",
-  "夜里不睡爱守灯",
   "见事先笑再出刀",
   "喜欢拿袖口试探人心",
   "越紧张越爱装平静",
@@ -159,7 +158,6 @@ const DAO_LYU_JOKE_TRAIT_POOL = [
 ] as const;
 
 const DAO_LYU_DEFAULT_SCENES = [
-  "守灯",
   "并肩",
   "夜谈",
   "雨夜",
@@ -173,6 +171,20 @@ const DAO_LYU_DEFAULT_SCENES = [
   "温泉",
   "沐发",
 ] as const;
+
+function deriveDaoLyuMbti(vibe: readonly string[]): string {
+  const vibeStr = vibe.join(" ");
+  if (/(清冷|知性|危险又体面)/.test(vibeStr)) return pick(["INTJ", "INFJ", "ISTJ"]);
+  if (/(御姐|师姐气)/.test(vibeStr)) return pick(["ENTJ", "ESTJ", "INTJ"]);
+  if (/(温柔|大姐姐)/.test(vibeStr)) return pick(["INFJ", "ENFJ", "ISFJ"]);
+  if (/(狐系|坏心眼|魅魔感)/.test(vibeStr)) return pick(["ENTP", "ENFP", "ESTP"]);
+  if (/(黏人|甜辣|纯欲)/.test(vibeStr)) return pick(["ENFP", "ESFP", "INFP"]);
+  if (/(嘴硬|薄情脸)/.test(vibeStr)) return pick(["ISTP", "ESTP", "INTJ"]);
+  if (/(妖女气|艳而不俗)/.test(vibeStr)) return pick(["ENFJ", "ENTJ", "ESFP"]);
+  if (/(懒散贵气|酒气漂亮)/.test(vibeStr)) return pick(["ISFP", "ESFP", "INFP"]);
+  if (/(肉感慵懒|丰润|会撩)/.test(vibeStr)) return pick(["ESFP", "ISFP", "ENFP"]);
+  return pick(["INTJ", "INFJ", "ENFJ", "ENTJ", "INTP", "ENTP", "INFP", "ENFP"]);
+}
 
 function deriveDaoLyuAdultStyle(wish: BondWishStructType, rawWish: string) {
   const text = `${rawWish} ${wish.desiredVibe.join(" ")} ${wish.desiredTraits.join(" ")}`;
@@ -215,19 +227,6 @@ function buildDaoLyuAppearanceLine(vibe: string[], rawWish: string, wish: BondWi
 }
 
 const DAO_LU_EVENT_BLUEPRINTS = [
-  {
-    key: "guard-lamp",
-    title: "守灯相伴",
-    summary: "道侣在夜里替你守灯守气口，嘴上不说重话，站位却比谁都近。",
-    storyHook: "本回合适合把道侣写成在夜里或途中默默陪着主角，递衣、守灯、压住风声，用安静的动作而不是系统播报来表现靠近。",
-    mood: "靠近",
-    relationshipSummary: "对方已经不再只是路过你的人，而是会在你最虚弱的时候留下来守着你。",
-    memorySummary: "对方在你夜里运气或赶路时守了一阵灯火，彼此的距离悄悄近了一寸。",
-    intimacyDelta: 2,
-    trustDelta: 1,
-    loyaltyDelta: 0,
-    destinyDelta: 1,
-  },
   {
     key: "protective",
     title: "当街护短",
@@ -1688,6 +1687,7 @@ function buildDaoLyuActorDraft(level: CultivationLevel, wish: BondWishStructType
   const loyalty = 58;
   const destiny = wish.adultTone ? 74 : 72;
   const progressStage = deriveBondProgressStage(DAO_LU, STAGE_ACTIVE, { intimacy, trust, loyalty, destiny });
+  const mbtiTag = deriveDaoLyuMbti(vibe);
 
   return {
     bondType: DAO_LU,
@@ -1698,7 +1698,7 @@ function buildDaoLyuActorDraft(level: CultivationLevel, wish: BondWishStructType
     realm: level,
     appearance: buildDaoLyuAppearanceLine(vibe as string[], rawWish, wish),
     originSummary: `你曾许愿想遇到一个${compactText(rawWish, "能与你并肩走很远的人")}。此人像是顺着这份愿望，被因果慢慢推到了你面前。`,
-    personalityTags: vibe,
+    personalityTags: [...(vibe as string[]), mbtiTag],
     publicTraits,
     hiddenTraits: [
       wish.adultTone ? "暧昧阈值:高" : "暧昧阈值:低",
@@ -2781,4 +2781,26 @@ export async function sendBondChatMessage(characterId: number, bondId: number, m
     },
     bondData: await getBondUiData(characterId),
   };
+}
+
+export async function renameBondActorByBondId(
+  characterId: number,
+  bondId: number,
+  newName: string,
+) {
+  const trimmed = newName.trim();
+  if (!trimmed) throw new Error("名字不能为空");
+
+  const bond = await prisma.characterBond.findFirst({
+    where: { id: bondId, characterId },
+    select: { actorId: true },
+  });
+  if (!bond) throw new Error("未找到对应的羁绊");
+
+  await prisma.bondActor.update({
+    where: { id: bond.actorId },
+    data: { name: trimmed },
+  });
+
+  return getBondUiData(characterId);
 }

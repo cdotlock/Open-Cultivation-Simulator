@@ -1,6 +1,6 @@
 "use server";
 
-import { getBondUiData, submitDaoLyuWish, acceptDiscipleCandidate, dismissDiscipleCandidate, sendBondChatMessage } from "../module/bondSystem";
+import { getBondUiData, submitDaoLyuWish, acceptDiscipleCandidate, dismissDiscipleCandidate, sendBondChatMessage, renameBondActorByBondId } from "../module/bondSystem";
 
 export async function getBondSnapshot(characterId: number) {
   return getBondUiData(characterId);
@@ -20,4 +20,8 @@ export async function rejectDisciple(characterId: number, bondId: number) {
 
 export async function sendBondChat(characterId: number, bondId: number, message: string) {
   return sendBondChatMessage(characterId, bondId, message);
+}
+
+export async function renameBond(characterId: number, bondId: number, newName: string) {
+  return renameBondActorByBondId(characterId, bondId, newName);
 }

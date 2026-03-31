@@ -5,7 +5,7 @@ import { useRecoilState } from "recoil";
 import { useRouter, useSearchParams } from "next/navigation";
 import { characterState } from "@/app/store";
 import { BondUiPayload } from "@/interfaces/bond";
-import { sendBondChat } from "@/app/actions/bond/action";
+import { sendBondChat, renameBond } from "@/app/actions/bond/action";
 import { $img } from "@/utils";
 
 type ChatMessage = {
@@ -55,6 +55,9 @@ export default function BondChatPage() {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [renamingBond, setRenamingBond] = useState(false);
 
   const characterId = useMemo(() => {
     const fromQuery = Number(searchParams.get("characterId") || "");
@@ -106,7 +109,61 @@ export default function BondChatPage() {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <div className="text-[10px] tracking-[0.24em] text-[#8a6a45]">私语</div>
-                <div className="mt-1 text-[26px] text-[#2f2217]">{bond.actor.name}</div>
+                <div className="mt-1 flex items-center gap-2">
+                  {editingName ? (
+                    <form
+                      className="flex items-center gap-2"
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (!nameInput.trim() || renamingBond) return;
+                        setRenamingBond(true);
+                        try {
+                          const next = await renameBond(characterId!, bondId, nameInput.trim());
+                          setPayload(next || undefined);
+                          setChar((prev) => (prev && prev.id === characterId)
+                            ? { ...prev, bondData: next }
+                            : prev);
+                          setEditingName(false);
+                        } finally {
+                          setRenamingBond(false);
+                        }
+                      }}
+                    >
+                      <input
+                        autoFocus
+                        className="rounded-xl border border-[#ccb181] bg-[#fff9ef] px-3 py-1 text-[20px] text-[#2f2217] outline-none w-[140px]"
+                        value={nameInput}
+                        onChange={(e) => setNameInput(e.target.value)}
+                        maxLength={20}
+                      />
+                      <button
+                        type="submit"
+                        disabled={renamingBond}
+                        className="rounded-full bg-[rgba(63,43,23,0.92)] px-3 py-1 text-[11px] text-[#f2dfbc] disabled:opacity-50"
+                      >
+                        确定
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingName(false)}
+                        className="rounded-full border border-[rgba(137,103,54,0.22)] px-3 py-1 text-[11px] text-[#6f5535]"
+                      >
+                        取消
+                      </button>
+                    </form>
+                  ) : (
+                    <>
+                      <span className="text-[26px] text-[#2f2217]">{bond.actor.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => { setNameInput(bond.actor.name); setEditingName(true); }}
+                        className="rounded-full border border-[rgba(137,103,54,0.22)] px-2 py-0.5 text-[11px] text-[#8a6a45] hover:bg-[rgba(244,234,207,0.6)]"
+                      >
+                        改名
+                      </button>
+                    </>
+                  )}
+                </div>
                 <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-[#7b5d3a]">
                   <div className="rounded-full bg-[rgba(255,250,242,0.92)] px-3 py-1">{bond.label}</div>
                   <div className="rounded-full bg-[rgba(255,250,242,0.92)] px-3 py-1">{bond.actor.realm}</div>

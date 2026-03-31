@@ -190,7 +190,7 @@ export default function BondsPage() {
                   </div>
                   <textarea
                     className="mt-3 min-h-[140px] w-full rounded-[18px] border border-[rgba(130,89,56,0.16)] bg-[rgba(255,255,255,0.76)] px-4 py-3 text-[14px] leading-[1.8] text-[#3f3123] focus:outline-none"
-                    placeholder="例如：我想要一个清冷、护短、嘴硬心软，肯在雨夜替我守灯的人。"
+                    placeholder="例如：我想要一个清冷、护短、嘴硬心软，能在最难熬的时候陪在身边的人。"
                     value={wishText}
                     onChange={(event) => setWishText(event.target.value)}
                   />

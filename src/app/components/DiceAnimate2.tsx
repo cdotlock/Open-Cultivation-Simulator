@@ -7,36 +7,37 @@ import { $img } from '@/utils';
 const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) => {
   const option = props.option;
   const [phase, setPhase] = useState<'entering' | 'rolling' | 'result' | 'success'>('entering');
+  const [showClose, setShowClose] = useState(false);
+  const [showReasons, setShowReasons] = useState(false);
   const [dice1, setDice1] = useState(1);
   const [dice2, setDice2] = useState(1);
 
   // 计算基础骰子值
   const baseDiceValue = (option?.骰子?.[0] || 0) + (option?.骰子?.[1] || 0);
 
-  const appliedModifier =  option?.修正值 || 0;
+  const appliedModifier = option?.修正值 || 0;
 
   // 计算最终总值（基础值 + 总修正）
   const totalDiceValue = baseDiceValue + appliedModifier;
+
+  // 检定目标DC
+  const dcValue = difficultyLevelMap.get(option?.选项难度 || "轻而易举") ?? 4;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const circleContainerRef = useRef<HTMLDivElement>(null);
   const diceContainerRef = useRef<HTMLDivElement>(null);
   const checkInfoRef = useRef<HTMLDivElement>(null);
   const reasonsContainerRef = useRef<HTMLDivElement>(null);
-  const diceValueRef = useRef<HTMLDivElement>(null);
+  const diceValueRef = useRef<HTMLSpanElement>(null);
 
-  // 根据阶段更新数值显示
+  // 仅在摇骰阶段显示"？"
   useEffect(() => {
     if (diceValueRef.current) {
       if (phase === 'entering' || phase === 'rolling') {
         diceValueRef.current.textContent = "？";
-      } else if (phase === 'result') {
-        diceValueRef.current.textContent = `${baseDiceValue}`;
-      } else if (phase === 'success') {
-        diceValueRef.current.textContent = `${totalDiceValue}`;
       }
     }
-  }, [phase, baseDiceValue, totalDiceValue]);
+  }, [phase]);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,7 +112,7 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
       await sleep(2000);
       if (cancelled) return;
 
-      // 4. 停止滚动，显示最终结果
+      // 4. 停止滚动，显示最终骰子点数
       setPhase('result');
       setDice1(option?.骰子?.[0] || 1);
       setDice2(option?.骰子?.[1] || 1);
@@ -120,28 +121,16 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
         rollInterval = null;
       }
 
-      await sleep(1000);
-      if (cancelled) return;
-
-      // 5. 变动原因出现
-      if (reasonsContainerRef.current && option?.变动原因 && option.变动原因.length > 0) {
-        reasonsContainerRef.current.animate([
-          { opacity: 0 },
-          { opacity: 1 }
-        ], {
-          duration: 1000,
-          easing: 'ease-out',
-          fill: 'forwards'
-        });
-      }
-
-      await sleep(2000);
-      if (cancelled) return;
-
-      // 6. 显示数值变化动画
+      // 骰子停稳后直接显示最终总值（含修正）
       if (diceValueRef.current) {
         diceValueRef.current.textContent = `${totalDiceValue}`;
+      }
 
+      await sleep(800);
+      if (cancelled) return;
+
+      // 5. 骰子数字变色动画（红/绿）
+      if (diceValueRef.current) {
         const animation = diceValueRef.current.animate([
           {
             transform: 'scale(1.5)',
@@ -158,20 +147,35 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
         });
 
         await new Promise<void>(resolve => {
-          animation.onfinish = () => {
-            if (!cancelled) {
-              setPhase('success');
-            }
-            resolve();
-          };
+          animation.onfinish = () => resolve();
         });
-
-        if (cancelled) return;
-
-        await sleep(500);
-        if (cancelled) return;
-        props.timeout();
       }
+
+      if (cancelled) return;
+
+      // 6. 变色完成后再显示数值增减
+      if (option?.变动原因 && option.变动原因.length > 0) {
+        setShowReasons(true);
+        // 等一帧让 React 渲染 reasons 容器后再执行动画
+        await sleep(50);
+        if (cancelled) return;
+        if (reasonsContainerRef.current) {
+          reasonsContainerRef.current.animate([
+            { opacity: 0 },
+            { opacity: 1 }
+          ], {
+            duration: 1000,
+            easing: 'ease-out',
+            fill: 'forwards'
+          });
+        }
+        await sleep(800);
+        if (cancelled) return;
+      }
+
+      // 7. 进入success阶段，显示关闭按钮
+      setPhase('success');
+      setShowClose(true);
     };
 
     animateSequence();
@@ -220,7 +224,10 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
             <div className="text-[15px] mt-2">
               {option?.选项类别}检定
             </div>
-            <div className="text-[24px]">
+            <div className="text-[13px] text-[#F3E0BB99] mt-1">
+              检定目标&nbsp;<span className="text-[#F3E0BB] font-bold">{dcValue}</span>&nbsp;·&nbsp;{option?.选项难度}
+            </div>
+            <div className="text-[24px] mt-1">
               2D6 = <span ref={diceValueRef}>？</span>
             </div>
           </div>
@@ -229,8 +236,8 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
           <div className="w-[calc(100vw-96px)] h-px mb-4" 
             style={{ background: `url(${$img('newDice/line')}) center / cover no-repeat` }} />
 
-          {/* 变动原因/加成列表 - 两列布局 */}
-          {(phase === 'result' || phase === 'success') && option?.变动原因 && option.变动原因.length > 0 && (
+          {/* 变动原因/加成列表 - 两列布局，变色后才显示 */}
+          {showReasons && option?.变动原因 && option.变动原因.length > 0 && (
             <div ref={reasonsContainerRef} className="w-full px-4 opacity-0">
               <div className="grid grid-cols-2 gap-4">
                 {option.变动原因.map((reason, index) => {
@@ -264,6 +271,16 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
             </div>
           )}
         </div>
+
+        {/* 手动关闭按钮，动画全部结束后出现 */}
+        {showClose && (
+          <button
+            onClick={props.timeout}
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-[#c9a96e] bg-[rgba(40,28,14,0.82)] px-6 py-2 text-[13px] tracking-[0.14em] text-[#f3e0bb] hover:bg-[rgba(60,42,20,0.92)] transition-colors"
+          >
+            继续
+          </button>
+        )}
       </div>
     </div>
   );

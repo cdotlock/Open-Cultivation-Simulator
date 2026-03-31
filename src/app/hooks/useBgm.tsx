@@ -29,37 +29,38 @@ export function useBgm() {
     }
   }, []);
 
-  // 状态一致性检查与重试
-  const checkAndRetryState = useCallback(() => {
+  // 状态一致性检查与重试（最多重试3次，避免自动播放策略导致的无限循环）
+  const checkAndRetryState = useCallback((retryCount = 0) => {
     if (!globalAudioInstance) return;
-    
+    if (retryCount >= 3) return; // 超过重试次数，放弃
+
     const actualPlaying = !globalAudioInstance.paused;
     const desiredPlaying = desiredPlayStateRef.current;
-    
+
     if (actualPlaying !== desiredPlaying) {
-      // 状态不一致，进行重试
       retryTimeoutRef.current = setTimeout(() => {
         if (desiredPlaying && globalAudioInstance && globalAudioInstance.paused) {
-          // 期望播放但实际暂停
           const playPromise = globalAudioInstance.play();
           if (playPromise !== undefined) {
             playPromise.catch(error => {
-              if (error.name !== 'AbortError') {
-                console.error('BGM 重试播放失败:', error);
+              if (error.name === 'NotAllowedError') {
+                // 浏览器自动播放策略阻止，静默放弃，等待用户交互
+                desiredPlayStateRef.current = false;
+                setIsPlaying(false);
+                return;
               }
-              // 继续重试直到状态一致
-              checkAndRetryState();
+              if (error.name !== 'AbortError') {
+                console.warn('BGM 重试播放失败:', error);
+              }
+              checkAndRetryState(retryCount + 1);
             });
           }
         } else if (!desiredPlaying && globalAudioInstance && !globalAudioInstance.paused) {
-          // 期望暂停但实际播放
           globalAudioInstance.pause();
+          setIsPlaying(false);
         }
-        // 无论成功失败，都再次检查状态
-        checkAndRetryState();
-      }, 300); // 300ms后重试
+      }, 300);
     } else {
-      // 状态一致，更新UI状态
       setIsPlaying(desiredPlaying);
     }
   }, []);
@@ -87,8 +88,13 @@ export function useBgm() {
         await audio.play();
         setIsPlaying(true);
       } catch (error) {
-        if ((error as Error).name !== 'AbortError') {
-          console.error('BGM 播放失败:', error);
+        const name = (error as Error).name;
+        if (name === 'NotAllowedError') {
+          // 浏览器自动播放策略阻止，静默等待用户交互后手动开启
+          desiredPlayStateRef.current = false;
+          setIsPlaying(false);
+        } else if (name !== 'AbortError') {
+          console.warn('BGM 播放失败:', error);
           cleanupAudio();
         } else {
           // AbortError - 启动状态一致性检查
