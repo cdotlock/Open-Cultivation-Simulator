@@ -189,7 +189,9 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
         clearInterval(rollInterval);
       }
     };
-  }, [option, props, baseDiceValue, totalDiceValue]);
+  // 只依赖 option 本身，避免 props/派生值变化重触发动画
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [option]);
 
   return (
     <div className="fixed inset-0 z-40 bg-[#000000cd] flex items-center justify-center">
@@ -228,7 +230,7 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
               {option?.选项类别}检定
             </div>
             <div className="text-[13px] text-[#F3E0BB99] mt-1">
-              检定目标&nbsp;<span className="text-[#F3E0BB] font-bold">{dcValue}</span>&nbsp;·&nbsp;{option?.选项难度}
+              检定目标&nbsp;<span className="text-[#F3E0BB] font-bold">{dcValue}</span>
             </div>
             <div className="text-[24px] mt-1">
               2D6 = <span ref={diceValueRef}>？</span>
