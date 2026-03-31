@@ -112,7 +112,7 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
       await sleep(2000);
       if (cancelled) return;
 
-      // 4. 停止滚动，显示最终骰子点数
+      // 4. 停止滚动，先显示骰子原始点数（不含修正）
       setPhase('result');
       setDice1(option?.骰子?.[0] || 1);
       setDice2(option?.骰子?.[1] || 1);
@@ -121,19 +121,42 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
         rollInterval = null;
       }
 
-      // 骰子停稳后直接显示最终总值（含修正）
+      // 先展示原始骰子值，让玩家看清楚投了多少
       if (diceValueRef.current) {
-        diceValueRef.current.textContent = `${totalDiceValue}`;
+        diceValueRef.current.textContent = `${baseDiceValue}`;
       }
 
-      await sleep(800);
+      await sleep(900);
       if (cancelled) return;
 
-      // 5. 骰子数字变色动画（红/绿）
+      // 5. 修正值原因浮现（如果有修正）
+      if (option?.变动原因 && option.变动原因.length > 0) {
+        setShowReasons(true);
+        await sleep(50); // 等一帧让 React 渲染容器
+        if (cancelled) return;
+        if (reasonsContainerRef.current) {
+          reasonsContainerRef.current.animate([
+            { opacity: 0 },
+            { opacity: 1 }
+          ], {
+            duration: 800,
+            easing: 'ease-out',
+            fill: 'forwards'
+          });
+        }
+        await sleep(1000);
+        if (cancelled) return;
+      }
+
+      // 6. 过渡到最终总值（含修正）并变色
       if (diceValueRef.current) {
+        // 如果有修正值，先把数字更新为最终值再做颜色动画
+        if (appliedModifier !== 0) {
+          diceValueRef.current.textContent = `${totalDiceValue}`;
+        }
         const animation = diceValueRef.current.animate([
           {
-            transform: 'scale(1.5)',
+            transform: 'scale(1.4)',
             color: option?.是否成功 ? '#10B981' : '#EF4444'
           },
           {
@@ -152,26 +175,6 @@ const DiceAnimate2 = (props: { option: GameOptionType, timeout: () => void }) =>
       }
 
       if (cancelled) return;
-
-      // 6. 变色完成后再显示数值增减
-      if (option?.变动原因 && option.变动原因.length > 0) {
-        setShowReasons(true);
-        // 等一帧让 React 渲染 reasons 容器后再执行动画
-        await sleep(50);
-        if (cancelled) return;
-        if (reasonsContainerRef.current) {
-          reasonsContainerRef.current.animate([
-            { opacity: 0 },
-            { opacity: 1 }
-          ], {
-            duration: 1000,
-            easing: 'ease-out',
-            fill: 'forwards'
-          });
-        }
-        await sleep(800);
-        if (cancelled) return;
-      }
 
       // 7. 进入success阶段，显示关闭按钮
       setPhase('success');
