@@ -70,12 +70,48 @@ export class OptionService {
         presetOption?: OptionWithPreroll
     ): Promise<GamePush> {
         const existingPush = await this.findExistingGamePush(choice, characterId, currentPushId);
-        
+
         if (existingPush) {
             return this.handleExistingGamePush(existingPush, choice, presetOption);
         }
-        
-        throw new Error(`Game push not found for choice: ${choice}. Need to create via GamePushService.`);
+
+        // 预加载 push 不存在（预加载失败或尚未完成），即时创建
+        console.warn(`[OptionService] 预加载 push 未找到，即时创建: ${choice}`);
+        return this.createPushFromCurrentContext(choice, characterId, currentPushId, presetOption);
+    }
+
+    private async createPushFromCurrentContext(
+        choice: string,
+        characterId: number,
+        currentPushId: number,
+        presetOption?: OptionWithPreroll
+    ): Promise<GamePush> {
+        const { GamePushService } = await import("./GamePushService");
+        const gps = new GamePushService();
+
+        const [character, currentPush] = await Promise.all([
+            prisma.character.findUnique({ where: { id: characterId } }),
+            prisma.gamePush.findUnique({ where: { id: currentPushId } }),
+        ]);
+
+        if (!character) throw new Error(`无法找到角色 id: ${characterId}`);
+        if (!currentPush) throw new Error(`无法找到 gamePush 记录 id: ${currentPushId}`);
+
+        const currentStatus = currentPush.status as CharacterStatusType;
+        if (!currentStatus) throw new Error("无法确定当前角色状态，无法生成 GamePush");
+
+        const success = presetOption?.是否成功 ?? true;
+        const { push } = await gps.pushGame(
+            character,
+            currentStatus,
+            choice,
+            success,
+            presetOption ? {
+                选项类别: presetOption.选项类别,
+                选项难度: presetOption.选项难度,
+            } : undefined
+        );
+        return push;
     }
 
     private async findExistingGamePush(
