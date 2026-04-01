@@ -2740,6 +2740,21 @@ export async function sendBondChatMessage(characterId: number, bondId: number, m
     .slice(0, 6)
     .map((item) => `- ${item.summary}`)
     .join("\n");
+
+  // 查询主线剧情中含有道侣姓名的最近片段，作为聊天上下文注入
+  const recentMainStorySegments = await prisma.storySegment.findMany({
+    where: {
+      characterId,
+      content: { contains: bond.actor.name },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 3,
+    select: { content: true },
+  });
+  const recentMainStory = recentMainStorySegments.length
+    ? recentMainStorySegments.map((s, i) => `[主线片段${i + 1}] ${s.content}`).join("\n\n")
+    : "";
+
   const fallback = buildFallbackChatResult(message, bond);
   const config = await ConfigService.getConfig("bond_chat_prompt");
   let result: BondChatResponseType = fallback;
@@ -2764,6 +2779,7 @@ export async function sendBondChatMessage(characterId: number, bondId: number, m
           adultTone: bond.actor.adultContentEnabled,
         }))
         .replace(/\{RECENT_MEMORIES\}/g, recentMemories || "暂无最近记忆")
+        .replace(/\{RECENT_MAIN_STORY\}/g, recentMainStory || "近期主线中暂无与此人直接相关的剧情")
         .replace(/\{FALLBACK_HINT\}/g, JSON.stringify(fallback));
       const { object } = await stableGenerateObject({
         model: modelInstance(config.model.name),
