@@ -55,6 +55,8 @@ export type GamePushResponse = {
         imageUrl?: string;
         error?: string;
     };
+    // 是否从历史恢复（继续修行），用于 UI 显示上节回顾标识
+    isResume?: boolean;
     factionData?: FactionUiPayload;
     bondData?: BondUiPayload;
 };

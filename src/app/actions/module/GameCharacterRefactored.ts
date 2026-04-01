@@ -1,5 +1,5 @@
 import { Character, GamePush } from "@/app/actions/generated/prisma";
-import { CharacterStatusType, CharacterStatusSchema, StoryPushType, CharacterDescriptionSchema, storyPushSchema } from "@/interfaces/schemas";
+import { CharacterStatusType, CharacterStatusSchema, StoryPushType, CharacterDescriptionSchema, storyPushSchema, storyPushSchemaV0 } from "@/interfaces/schemas";
 import { getCharacterById, getGamePushById } from "./query";
 import { formatStatusWithMax } from "../character/constants";
 import { performCheck } from "./checkSystem";
@@ -29,10 +29,22 @@ export class GameCharacterRefactored {
 
     get currentInfo(): StoryPushType {
         const infoSchema = storyPushSchema.safeParse(this.currentPush.info);
-        if (!infoSchema.success) {
-            throw new Error("角色信息解析失败");
+        if (infoSchema.success) return infoSchema.data;
+        // 兼容旧版 schema（描述 → 剧情 字段名不同）
+        const infoSchemaV0 = storyPushSchemaV0.safeParse(this.currentPush.info);
+        if (infoSchemaV0.success) {
+            const v0 = infoSchemaV0.data;
+            return {
+                节点要素: {
+                    ...v0.节点要素,
+                    剧情要素: {
+                        ...v0.节点要素.剧情要素,
+                        剧情: v0.节点要素.剧情要素.描述,
+                    }
+                }
+            } as unknown as StoryPushType;
         }
-        return infoSchema.data;
+        throw new Error("角色信息解析失败");
     }
 
     get isStarted(): boolean {
@@ -104,6 +116,40 @@ export class GameCharacterRefactored {
 
     public async startGame(): Promise<GamePushResponse> {
         try {
+            const canResume = this.currentPush.finishType === 1 && storyPushSchema.safeParse(this.currentPush.info).success;
+
+            // 查找真正的最后游玩段落：isChoice:true + finishType:1（排除合成摘要节点）
+            const lastChoicePush = canResume ? await prisma.gamePush.findFirst({
+                where: { characterId: this.id, isChoice: true, isSummary: false, finishType: 1 },
+                orderBy: { id: 'desc' },
+            }) : null;
+
+            // 若找到最后一个真实游玩节点且内容可解析，直接恢复而无需 LLM 重新生成
+            if (canResume && lastChoicePush) {
+                const parsedInfo = storyPushSchema.safeParse(lastChoicePush.info).success
+                    || storyPushSchemaV0.safeParse(lastChoicePush.info).success;
+                if (parsedInfo) {
+                    this.character = await prisma.character.update({
+                        where: { id: this.id },
+                        data: { currentPushId: lastChoicePush.id },
+                    });
+                    this.setCurrentPush({ ...lastChoicePush, status: lastChoicePush.status } as GamePush, { refreshCloneBaseline: true });
+                    this.asyncPreloadNext(this.character, this.currentPush, this.currentStatus);
+                    const factionData = await getFactionUiData(this.id);
+                    const bondData = await getBondUiData(this.id);
+                    return {
+                        id: this.currentPush.id,
+                        gamePush: this.currentInfo,
+                        newStatus: formatStatusWithMax(this.currentStatus),
+                        statusDelta: { 体魄: 0, 道心: 0, 突破成功系数: 0, 行动点: 0, 魅力: 0, 神识: 0, 身手: 0 },
+                        checkResult: this.optionService.createDefaultCheckResult(),
+                        isResume: true,
+                        factionData,
+                        bondData
+                    };
+                }
+            }
+
             const { push, delta } = await this.gamePushService.startGame(this.character, this.currentStatus);
 
             const parsedStatus = this.parseStatus(push.status);

@@ -324,7 +324,7 @@ const StatusLoading = ({ loadingAnimateState = true }: { loadingAnimateState?: b
   );
 };
 
-const StatusPlaying = ({ story, onNext, setGameState, imageUrl, showImage }: { story: string, onNext: (option: GameOptionType) => void, setGameState: (state: gameState) => void, imageUrl?: string, showImage?: boolean }) => {
+const StatusPlaying = ({ story, onNext, setGameState, imageUrl, showImage, isResume }: { story: string, onNext: (option: GameOptionType) => void, setGameState: (state: gameState) => void, imageUrl?: string, showImage?: boolean, isResume?: boolean }) => {
   const [option, setOption] = useState<GameOptionType | null>(null)
   const [tempImg, setTempImg] = useState<string | null>(null)
   const [isPreviewing, setIsPreviewing] = useState(false)
@@ -489,6 +489,9 @@ const StatusPlaying = ({ story, onNext, setGameState, imageUrl, showImage }: { s
     {/* 正常内容，在预览状态下隐藏 */}
     {!isPreviewing && (
       <div className="px-[22px] pb-10">
+        {isResume && (
+          <p className="mb-3 text-center tracking-widest text-[13px] text-[#8B7355] opacity-60">── 上节回顾 ──</p>
+        )}
         <div
           className={storyProseClass}
           dangerouslySetInnerHTML={{ __html: story }}
@@ -585,11 +588,19 @@ const StatusBreakthrough = ({
 )}
 
 const PageStory= () => {
-  // 游戏状态
-  const [gameState, setGameState] = useState<gameState>({ status: "streaming" });
   const [char, setChar] = useRecoilState(characterState);
   const [gamePush, setGamePush] = useRecoilState(gamePushState);
-  const [expendedStory, setExpendedStory] = useState<string>("");
+  // 继续修行时直接进入 playing 状态，跳过流式动画
+  const [gameState, setGameState] = useState<gameState>(() => ({
+    status: gamePush?.isResume ? "playing" : "streaming"
+  }));
+  const [expendedStory, setExpendedStory] = useState<string>(() => {
+    if (gamePush?.isResume) {
+      const storyText = gamePush.gamePush?.节点要素?.剧情要素?.剧情?.trim() || "";
+      return buildStoryHtml(storyText);
+    }
+    return "";
+  });
   const [imageState, setImageState] = useState<imageGenerationState>({ showImage: false });
   const router = useRouter();
   const { routerTo } = useRoute();
@@ -782,7 +793,7 @@ const PageStory= () => {
       </div>
       {/* {updateStrings?.length > 0 && <AttributeUpdate updateStrings={updateStrings} />} */}
       {gameState.status === "streaming" && <StatusStreaming complete={completeExpendedStory} />}
-      {gameState.status === "playing" && <StatusPlaying story={expendedStory} onNext={handleNext} setGameState={setGameState} imageUrl={imageState.imageUrl} showImage={imageState.showImage} />}
+      {gameState.status === "playing" && <StatusPlaying story={expendedStory} onNext={handleNext} setGameState={setGameState} imageUrl={imageState.imageUrl} showImage={imageState.showImage} isResume={!!gamePush?.isResume} />}
       {gameState.status === "loading" && <StatusLoading loadingAnimateState={gameState.loadingAnimateState} />}
       {gameState.status === "breakthrough" && (
         <StatusBreakthrough 
