@@ -459,7 +459,7 @@ const StatusPlaying = ({ story, onNext, setGameState, imageUrl, showImage }: { s
 
   return <div className="relative h-[calc(100vh-112px)] w-full text-[18px] text-[#524a37]">
     {isAnalyzing && (
-      <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#00000080]">
+      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#00000080]">
         <div className="text-white text-[16px]">自定义选项分析中...</div>
       </div>
     )}
