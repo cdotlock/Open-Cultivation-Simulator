@@ -413,7 +413,7 @@ const DAO_LYU_EVENT_TREE: EventTreeNode = {
           label: "嘴硬行动",
           weight: 3,
           preferredMoods: ["嘴硬", "留心", "试探"],
-          preferredPersonality: ["嘴硬心软", "外冷内热", "话少但行动诚实", "护短成性", "心思细腻"],
+          preferredPersonality: ["内敛", "慢热", "务实", "理智"],
           blueprints: [
             {
               key: "grumble-then-do",
@@ -741,7 +741,7 @@ const DAO_LYU_EVENT_TREE: EventTreeNode = {
           label: "护短霸道",
           weight: 3,
           preferredMoods: ["护短", "霸道", "执着"],
-          preferredPersonality: ["护短成性", "保护欲强", "占有欲强", "霸道", "执着", "控制欲强", "有点霸道"],
+          preferredPersonality: ["强势", "霸道", "执着", "控制欲强"],
           blueprints: [
             {
               key: "angry-before-you",
@@ -886,7 +886,7 @@ const DAO_LYU_EVENT_TREE: EventTreeNode = {
           label: "只对你软",
           weight: 3,
           preferredMoods: ["偏心", "专注", "相守"],
-          preferredPersonality: ["外冷内热", "专一", "话少但行动诚实", "高冷毒舌", "极度克制", "内敛"],
+          preferredPersonality: ["内敛", "高冷", "毒舌", "淡定"],
           blueprints: [
             {
               key: "cold-outside-soft-for-you",
