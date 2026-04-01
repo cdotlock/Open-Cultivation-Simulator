@@ -262,7 +262,7 @@ const DAO_LU_EVENT_BLUEPRINTS = [
     key: "night-talk",
     title: "并肩夜谈",
     summary: "你们在夜里并肩坐了一阵，谁都没把话说得太满，但很多心思已经不必明说。",
-    storyHook: "本回合适合安排一段并肩夜谈、飞舟闲坐或短暂歇脚，让道侣用少量台词试探、宽慰或嘴硬心软地贴近主角。",
+    storyHook: "本回合适合安排一段安静独处的时光，场景贴合当前主线（可以是行路途中、歇脚处或任何自然停顿），让道侣用少量台词试探或宽慰，把关系往前推。",
     mood: "试探",
     relationshipSummary: "彼此说话仍留余地，但已经能在沉默里看懂对方的意思。",
     memorySummary: "你们夜里并肩说了一阵话，很多试探没有点破，却都被记下了。",
@@ -589,8 +589,8 @@ const DAO_LYU_EVENT_TREE: EventTreeNode = {
             {
               key: "night-drink",
               title: "并肩夜饮",
-              summary: "你们靠着栏边分了一壶酒，对方酒量分明比你稳，却偏偏在你看过来时故意慢了一拍，像在等一句不太好说的话。",
-              storyHook: "本回合适合安排飞舟夜饮、栏边歇脚或危机后的短暂放松，让道侣用压低声线和留白句子把关系往前推。",
+              summary: "你们分了一壶酒，对方酒量分明比你稳，却偏偏在你看过来时故意慢了一拍，像在等一句不太好说的话。",
+              storyHook: "本回合适合写一段安静独处时共饮的场景，具体地点根据主线进展自然嵌入，让道侣用压低声线和留白句子把关系往前推一步。",
               mood: "缱绻",
               relationshipSummary: "彼此已经能在夜色里把话说到一半也不怕对方听不懂。",
               memorySummary: "你们并肩分了一壶酒，很多没说透的话都被夜风和目光记了下来。",
@@ -617,11 +617,50 @@ const DAO_LYU_EVENT_TREE: EventTreeNode = {
               key: "secret-lamp-talk",
               title: "熄灯前又留了一句",
               summary: "夜里灯都快熄了，对方却在门边又停了一下，回头补了一句似真似假的叮嘱，听上去像命令，实际全是挂念。",
-              storyHook: "本回合适合写一段短暂收尾场景，让道侣在离开前回头补一句嘴硬心软的话，把关系余温留到章节尾部。",
+              storyHook: "本回合适合写一段短暂收尾场景，让道侣在即将离开的瞬间回头补一句嘴硬心软的话，场景贴合主线当前位置，把关系余温留到章节尾部。",
               mood: "挂念",
               relationshipSummary: "你们已经习惯把关心藏进临走前那句最难装作随口的话。",
               memorySummary: "熄灯前，对方回头多留了一句叮嘱，嘴上像发号施令，实际全是挂念。",
               intimacyDelta: 1,
+              trustDelta: 2,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+            },
+            {
+              key: "caught-watching",
+              title: "被抓到在看你",
+              summary: "你没打招呼就转过头，正好对上对方的目光，他移开得不算快，嘴上扯了个借口，眼神却已经出卖了自己。",
+              storyHook: "本回合适合写一个短暂的对视片段，不需要特定地点，重点在于道侣被抓到盯着主角后那一瞬间的收场方式，用眼神和借口暴露心思。",
+              mood: "留心",
+              relationshipSummary: "对方已经开始不自觉地把目光往你这边放，即使被抓到也只是移开得晚了一步。",
+              memorySummary: "你转头正好对上他的视线，他移开得不够利索，借口也找得仓促，但什么都没说破。",
+              intimacyDelta: 2,
+              trustDelta: 1,
+              loyaltyDelta: 0,
+              destinyDelta: 1,
+            },
+            {
+              key: "asked-only-you",
+              title: "这话只问了你",
+              summary: "他问了你一个问题，不像是随口，更不像是在等标准答案，停顿太长，说明这话在心里压了有一阵子了。",
+              storyHook: "本回合适合让道侣主动开口问主角一个私密或罕见的问题，问题本身不必说破，重点在于他选择只问你这个细节。",
+              mood: "试探",
+              relationshipSummary: "对方开始把一些只想听你回答的问题拿出来问，说明你在他心里的位置已经不同了。",
+              memorySummary: "他问了你一个很少问别人的问题，停顿太长，说明不是随口。",
+              intimacyDelta: 1,
+              trustDelta: 2,
+              loyaltyDelta: 0,
+              destinyDelta: 2,
+            },
+            {
+              key: "noticed-first",
+              title: "你还没开口他就看出来了",
+              summary: "你什么都没说，他已经先把东西送到你手边，或者先把那件事处理掉了，像是早就看出来了但懒得等你开口。",
+              storyHook: "本回合适合写道侣提前察觉主角需求并悄然处理的场景，不要用太多台词，用行动和细节体现默契，场景可贴合主线任意节点。",
+              mood: "安心",
+              relationshipSummary: "对方已经习惯在你说出口之前把事情做完，默契开始变成一种理所当然。",
+              memorySummary: "你什么都没说，他已经先把那件事处理好了，你不知道他是什么时候看出来的。",
+              intimacyDelta: 2,
               trustDelta: 2,
               loyaltyDelta: 0,
               destinyDelta: 1,
@@ -1658,14 +1697,14 @@ function chooseEventSelection(bond: CharacterBondView, turn: number): EventSelec
     flavor.desiredScenes.join("|"),
   );
 
-  // 收集最近4次事件用过的蓝图key，避免选重
+  // 收集最近8次事件用过的蓝图key，避免选重
   const recentlyUsedKeys = new Set<string>(
     bond.memories
       .filter((m) => {
         const p = m.payload && typeof m.payload === "object" ? m.payload as Record<string, unknown> : {};
         return m.sourceType === "EVENT" && typeof p.eventType === "string";
       })
-      .slice(-4)
+      .slice(-8)
       .map((m) => (m.payload as Record<string, unknown>).eventType as string),
   );
 
