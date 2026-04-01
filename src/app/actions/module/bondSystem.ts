@@ -58,6 +58,8 @@ type EventBlueprint = {
   minJokeTolerance?: JokeTolerance;
   preferredScenes?: readonly string[];
   preferredMoods?: readonly string[];
+  /** 若指定，道侣的 personalityTags 或 publicTraits 中至少需含其一，否则跳过此蓝图 */
+  preferredPersonality?: readonly string[];
 };
 
 type EventTreeNode = {
@@ -69,6 +71,8 @@ type EventTreeNode = {
   preferredScenes?: readonly string[];
   preferredMoods?: readonly string[];
   allowedProgressStages?: readonly BondProgressStage[];
+  /** 若指定，道侣的 personalityTags 或 publicTraits 中至少需含其一，否则跳过此分支 */
+  preferredPersonality?: readonly string[];
   children?: readonly EventTreeNode[];
   blueprints?: readonly EventBlueprint[];
 };
@@ -409,6 +413,7 @@ const DAO_LYU_EVENT_TREE: EventTreeNode = {
           label: "嘴硬行动",
           weight: 3,
           preferredMoods: ["嘴硬", "留心", "试探"],
+          preferredPersonality: ["嘴硬心软", "外冷内热", "话少但行动诚实", "护短成性", "心思细腻"],
           blueprints: [
             {
               key: "grumble-then-do",
@@ -736,6 +741,7 @@ const DAO_LYU_EVENT_TREE: EventTreeNode = {
           label: "护短霸道",
           weight: 3,
           preferredMoods: ["护短", "霸道", "执着"],
+          preferredPersonality: ["护短成性", "保护欲强", "占有欲强", "霸道", "执着", "控制欲强", "有点霸道"],
           blueprints: [
             {
               key: "angry-before-you",
@@ -880,6 +886,7 @@ const DAO_LYU_EVENT_TREE: EventTreeNode = {
           label: "只对你软",
           weight: 3,
           preferredMoods: ["偏心", "专注", "相守"],
+          preferredPersonality: ["外冷内热", "专一", "话少但行动诚实", "高冷毒舌", "极度克制", "内敛"],
           blueprints: [
             {
               key: "cold-outside-soft-for-you",
@@ -1564,6 +1571,19 @@ function nodeMatchesFlavor(node: EventTreeNode | EventBlueprint, bond: Character
   }
   if ("allowedProgressStages" in node && node.allowedProgressStages && !node.allowedProgressStages.includes(bond.progressStage)) {
     return false;
+  }
+  // 性格匹配：若蓝图/分支指定了 preferredPersonality，则道侣的 personalityTags 或 publicTraits 中至少需含其一
+  if (node.preferredPersonality && node.preferredPersonality.length > 0) {
+    const actorTags = [
+      ...(bond.actor.personalityTags ?? []),
+      ...(bond.actor.publicTraits ?? []),
+    ];
+    const matched = node.preferredPersonality.some((tag) =>
+      actorTags.some((t) => t.includes(tag) || tag.includes(t)),
+    );
+    if (!matched) {
+      return false;
+    }
   }
   return true;
 }
