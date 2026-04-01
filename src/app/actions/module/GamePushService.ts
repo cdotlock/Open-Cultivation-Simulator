@@ -195,7 +195,11 @@ export class GamePushService {
     }
 
     async startGame(character: Character, currentStatus: CharacterStatusType): Promise<{ push: GamePush; delta: StatusDelta }> {
-        const dynamicInput = `当前角色状态: ${formatStatusForLLM(currentStatus)}`;
+        const gameContext = await compressMemoryIfNeeded(character.id);
+        const hasHistory = gameContext !== "暂无剧情记录";
+        const dynamicInput = hasHistory
+            ? `当前角色状态: ${formatStatusForLLM(currentStatus)}\n        ${gameContext}`
+            : `当前角色状态: ${formatStatusForLLM(currentStatus)}`;
         const factionContext = await getFactionNarrativeContext(character.id);
         const bondContext = await getBondNarrativeContext(character.id, this.calculateTurnCount(currentStatus));
         const result = await this.createGamePush(
