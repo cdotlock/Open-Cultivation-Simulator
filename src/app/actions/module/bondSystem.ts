@@ -114,29 +114,46 @@ const DAO_LU_VIBES = [
 ] as const;
 
 const DAO_LYU_BASE_TRAIT_POOL = [
+  // 社交倾向
+  "内敛",
+  "慢热",
+  "心思细腻",
+  "开朗直爽",
+  "主动热情",
+  // 思维方式
+  "务实稳重",
+  "理想主义",
+  "有远见",
+  "擅揣测",
+  // 决策风格
+  "高冷毒舌",
+  "理智冷静",
+  "温柔治愈",
+  "共情力强",
+  "心软",
+  // 行事风格
+  "执着",
+  "严谨",
+  "霸道",
+  "控制欲强",
+  "随性洒脱",
+  // 情绪稳定性
+  "淡定抗压",
+  "完美主义",
+  "易纠结",
+  // 复合标签
   "外冷内热",
   "护短成性",
   "嘴硬心软",
-  "刀子嘴豆腐心",
-  "表里不一",
-  "话少但行动诚实",
-  "占有欲强但不外露",
-  "极度克制",
-  "偏心但装公允",
-  "吃味不认",
-  "越在意越装没事",
-  "腹黑温柔",
-  "冷静理智",
-  "敏感但绝不先开口",
-  "黏人但死不承认",
+  "腹黑",
+  "占有欲强",
 ] as const;
 
 const DAO_LYU_ADULT_TRAIT_POOL = [
   "危险且体面",
-  "撩拨时浑然不觉",
+  "撩而不自知",
   "克制中带侵略性",
   "温柔得像陷阱",
-  "理智崩塌只对你",
 ] as const;
 
 const DAO_LYU_JOKE_TRAIT_POOL = [
@@ -162,17 +179,25 @@ const DAO_LYU_DEFAULT_SCENES = [
 ] as const;
 
 function deriveDaoLyuMbti(vibe: readonly string[]): string {
+  // 根据气质推断 MBTI 四维度，最终附加 -A（自信稳定）或 -T（敏感多虑）后缀
   const vibeStr = vibe.join(" ");
-  if (/(清冷|知性|危险又体面)/.test(vibeStr)) return pick(["INTJ", "INFJ", "ISTJ"]);
-  if (/(御姐|师姐气)/.test(vibeStr)) return pick(["ENTJ", "ESTJ", "INTJ"]);
-  if (/(温柔|大姐姐)/.test(vibeStr)) return pick(["INFJ", "ENFJ", "ISFJ"]);
-  if (/(狐系|坏心眼|魅魔感)/.test(vibeStr)) return pick(["ENTP", "ENFP", "ESTP"]);
-  if (/(黏人|甜辣|纯欲)/.test(vibeStr)) return pick(["ENFP", "ESFP", "INFP"]);
-  if (/(嘴硬|薄情脸)/.test(vibeStr)) return pick(["ISTP", "ESTP", "INTJ"]);
-  if (/(妖女气|艳而不俗)/.test(vibeStr)) return pick(["ENFJ", "ENTJ", "ESFP"]);
-  if (/(懒散贵气|酒气漂亮)/.test(vibeStr)) return pick(["ISFP", "ESFP", "INFP"]);
-  if (/(肉感慵懒|丰润|会撩)/.test(vibeStr)) return pick(["ESFP", "ISFP", "ENFP"]);
-  return pick(["INTJ", "INFJ", "ENFJ", "ENTJ", "INTP", "ENTP", "INFP", "ENFP"]);
+
+  // 推断基础类型
+  let base: string;
+  if (/(清冷|知性|危险又体面)/.test(vibeStr)) base = pick(["INTJ", "INFJ", "ISTJ"]);
+  else if (/(御姐|师姐气)/.test(vibeStr)) base = pick(["ENTJ", "ESTJ", "INTJ"]);
+  else if (/(温柔|大姐姐)/.test(vibeStr)) base = pick(["INFJ", "ENFJ", "ISFJ"]);
+  else if (/(狐系|坏心眼|魅魔感)/.test(vibeStr)) base = pick(["ENTP", "ENFP", "ESTP"]);
+  else if (/(黏人|甜辣|纯欲)/.test(vibeStr)) base = pick(["ENFP", "ESFP", "INFP"]);
+  else if (/(嘴硬心软|薄情脸)/.test(vibeStr)) base = pick(["ISTP", "ESTP", "INTJ"]);
+  else if (/(妖女气|艳而不俗)/.test(vibeStr)) base = pick(["ENFJ", "ENTJ", "ESFP"]);
+  else if (/(懒散贵气|酒气漂亮)/.test(vibeStr)) base = pick(["ISFP", "ESFP", "INFP"]);
+  else if (/(肉感慵懒|丰润|会撩)/.test(vibeStr)) base = pick(["ESFP", "ISFP", "ENFP"]);
+  else base = pick(["INTJ", "INFJ", "ENFJ", "ENTJ", "INTP", "ENTP", "INFP", "ENFP"]);
+
+  // 推断情绪稳定性后缀：-A 自信稳定，-T 敏感多虑
+  const variant = /(淡定|抗压|霸道|高冷|严谨|控制欲)/.test(vibeStr) ? "A" : pick(["A", "T"]);
+  return `${base}-${variant}`;
 }
 
 function deriveDaoLyuAdultStyle(wish: BondWishStructType, rawWish: string) {
