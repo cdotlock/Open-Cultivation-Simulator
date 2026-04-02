@@ -51,3 +51,6 @@ next-env.d.ts
 
 # Ignore any directory named 'generated' and all its subdirectories and files
 **/generated/
+
+# Claude local settings (permissions, local config)
+.claude/
